@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from .history import history_image
 
-def test_buffered_image_append():
+def test_history_image_append():
     """Test underfull image histories"""
     with tf.Graph().as_default():
         in_image = tf.random_normal((5, 5))
@@ -17,7 +17,7 @@ def test_buffered_image_append():
                 in_arr, out_arr = sess.run((in_image, hist))
                 assert (in_arr == out_arr).all()
 
-def test_buffered_image_sample():
+def test_history_image_sample():
     """Test sampling from image histories"""
     with tf.Graph().as_default():
         in_image = tf.random_normal((5, 5))
@@ -40,7 +40,7 @@ def test_buffered_image_sample():
                 assert found
                 sample_count += 1
 
-def test_buffered_image_single():
+def test_history_image_single():
     """Test a buffer with one sample"""
     with tf.Graph().as_default():
         in_image = tf.random_normal((5, 5))
