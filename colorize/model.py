@@ -23,7 +23,10 @@ def colorize(input_ph):
     output = input_ph
     for features in [32, 64, 128, 256, 128, 64, 32, 3]:
         output = tf.pad(output, [[0, 0], [2, 2], [2, 2], [0, 0]], mode='REFLECT')
-        output = tf.layers.conv2d(output, features, 5, padding='valid', activation=tf.nn.relu)
+        activation = None
+        if features != 3:
+            activation = tf.nn.relu
+        output = tf.layers.conv2d(output, features, 5, padding='valid', activation=activation)
     return tf.sigmoid(output)
 
 def save_state(sess, path):
