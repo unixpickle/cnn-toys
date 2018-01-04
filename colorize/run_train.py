@@ -20,11 +20,11 @@ def main(args):
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        restore_state(sess, args.out_file)
+        restore_state(sess, args.state_file)
         while True:
             losses, _ = sess.run([(train_loss, val_loss), optimize])
             print('train=%f val=%f' % losses)
-            save_state(sess, args.out_file)
+            save_state(sess, args.state_file)
 
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -32,7 +32,7 @@ def _parse_args():
     parser.add_argument('--size', help='image size', type=int, default=64)
     parser.add_argument('--batch', help='batch size', type=int, default=16)
     parser.add_argument('--step-size', help='training step size', type=float, default=1e-3)
-    parser.add_argument('--out-file', help='state output file', default='state.pkl')
+    parser.add_argument('--state-file', help='state output file', default='state.pkl')
     return parser.parse_args()
 
 if __name__ == '__main__':
