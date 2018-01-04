@@ -22,6 +22,8 @@ def dir_datasets(image_dir, size):
             paths.append(os.path.join(image_dir, name))
     train_paths = [p for p in paths if not _use_for_val(p)]
     val_paths = [p for p in paths if _use_for_val(p)]
+    if not train_paths or not val_paths:
+        raise RuntimeError('not enough data')
     return images_dataset(train_paths, size), images_dataset(val_paths, size)
 
 def images_dataset(paths, size):
