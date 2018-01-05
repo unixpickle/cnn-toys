@@ -13,5 +13,5 @@ setup(
     author_email='unixpickle@gmail.com',
     license='MIT',
     packages=['cnn_toys'],
-    install_requires=['tensorflow', 'numpy']
+    install_requires=['numpy']
 )

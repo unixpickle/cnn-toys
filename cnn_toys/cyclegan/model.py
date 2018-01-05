@@ -13,9 +13,11 @@ class CycleGAN:
     in a single package.
     """
     def __init__(self, real_x, real_y, buffer_size=50, cycle_weight=10):
-        self._setup_generators(real_x, real_y)
-        self._setup_discriminators(real_x, real_y, buffer_size)
-        self._setup_cycles(real_x, real_y, cycle_weight)
+        self.real_x = real_x
+        self.real_y = real_y
+        self._setup_generators()
+        self._setup_discriminators(buffer_size)
+        self._setup_cycles(cycle_weight)
         self._setup_gradients()
 
     def optimize(self, learning_rate=0.0002, global_step=None):
@@ -23,31 +25,31 @@ class CycleGAN:
         opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
         return opt.apply_gradients(self.gradients, global_step=global_step)
 
-    def _setup_generators(self, real_x, real_y):
+    def _setup_generators(self):
         start_vars = tf.trainable_variables()
         with tf.variable_scope('gen_x'):
-            self.gen_x = generator(real_y)
+            self.gen_x = generator(self.real_y)
         with tf.variable_scope('gen_y'):
-            self.gen_y = generator(real_x)
+            self.gen_y = generator(self.real_x)
         self.gen_vars = [v for v in tf.trainable_variables() if v not in start_vars]
 
-    def _setup_discriminators(self, real_x, real_y, buffer_size):
+    def _setup_discriminators(self, buffer_size):
         start_vars = tf.trainable_variables()
         with tf.variable_scope('disc_x'):
-            disc_x_loss, gen_x_loss = gan_loss(real_x, self.gen_x, buffer_size)
+            disc_x_loss, gen_x_loss = gan_loss(self.real_x, self.gen_x, buffer_size)
         with tf.variable_scope('disc_y'):
-            disc_y_loss, gen_y_loss = gan_loss(real_y, self.gen_y, buffer_size)
+            disc_y_loss, gen_y_loss = gan_loss(self.real_y, self.gen_y, buffer_size)
         self.disc_vars = [v for v in tf.trainable_variables() if v not in start_vars]
         self.disc_loss = disc_x_loss + disc_y_loss
         self.gen_loss = gen_x_loss + gen_y_loss
 
-    def _setup_cycles(self, real_x, real_y, weight):
+    def _setup_cycles(self, weight):
         with tf.variable_scope('gen_y', reuse=True):
             self.cycle_y = generator(self.gen_x)
         with tf.variable_scope('gen_x', reuse=True):
             self.cycle_x = generator(self.gen_y)
-        self.cycle_loss = weight * (tf.reduce_mean(tf.abs(real_x - self.cycle_x)) +
-                                    tf.reduce_mean(tf.abs(real_y - self.cycle_y)))
+        self.cycle_loss = weight * (tf.reduce_mean(tf.abs(self.real_x - self.cycle_x)) +
+                                    tf.reduce_mean(tf.abs(self.real_y - self.cycle_y)))
 
     def _setup_gradients(self):
         gen_grad = _grad_dict(self.gen_loss + self.cycle_loss, self.gen_vars)
@@ -75,25 +77,26 @@ def gan_loss(real_image, gen_image, buffer_size):
     gen_loss = tf.reduce_mean(tf.square(gen_outs - 1))
     return disc_loss, gen_loss
 
-def generator(images):
-    """Generate images in Y using the batch of images in X."""
+def generator(image):
+    """Generate an image in Y using an image in X."""
     activation = lambda x: tf.nn.relu(instance_norm(x))
-    output = reflection_pad(images, 7)
-    output = tf.layers.conv2d(output, 32, 7, activation=activation)
+    output = reflection_pad(tf.expand_dims(image, 0), 7)
+    output = tf.layers.conv2d(output, 32, 7, padding='valid', activation=activation)
     for num_filters in [64, 128]:
         output = reflection_pad(output, 3)
-        output = tf.layers.conv2d(output, num_filters, 3, strides=2, activation=activation)
+        output = tf.layers.conv2d(output, num_filters, 3, strides=2, padding='valid',
+                                  activation=activation)
     for _ in range(6):
         new_out = output
         for _ in range(2):
             new_out = reflection_pad(new_out, 3)
-            new_out = tf.layers.conv2d(tf.layers.conv2d(output, 128, 3), 128, 3)
+            new_out = tf.layers.conv2d(new_out, 128, 3, padding='valid')
         output = output + new_out
     for num_filters in [64, 32]:
         output = tf.layers.conv2d_transpose(output, num_filters, 3, strides=2, padding='same',
                                             activation=activation)
     output = reflection_pad(output, 7)
-    return tf.sigmoid(tf.layers.conv2d(output, 3, 7))
+    return tf.sigmoid(tf.layers.conv2d(output, 3, 7, padding='valid'))[0]
 
 def instance_norm(images, epsilon=1e-5, name='instance_norm'):
     """Apply instance normalization to the batch."""
