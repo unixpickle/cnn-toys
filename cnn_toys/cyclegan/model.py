@@ -18,6 +18,11 @@ class CycleGAN:
         self._setup_cycles(real_x, real_y, cycle_weight)
         self._setup_gradients()
 
+    def optimize(self, learning_rate=0.0002, global_step=None):
+        """Create an Op that takes a training step."""
+        opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        return opt.apply_gradients(self.gradients, global_step=global_step)
+
     def _setup_generators(self, real_x, real_y):
         start_vars = tf.trainable_variables()
         with tf.variable_scope('gen_x'):
