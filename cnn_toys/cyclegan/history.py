@@ -4,7 +4,7 @@ An in-graph image history buffer.
 
 import tensorflow as tf
 
-def history_image(image, buffer_size=50, name='image_buffer'):
+def history_image(image, buffer_size, name='image_buffer'):
     """
     Get an image from a history buffer and submit the
     image to the same buffer.
