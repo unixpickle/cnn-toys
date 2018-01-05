@@ -2,9 +2,6 @@
 A model for image colorization.
 """
 
-import os
-import pickle
-
 import tensorflow as tf
 
 def sample_loss(input_ph):
@@ -28,17 +25,3 @@ def colorize(input_ph):
             activation = tf.nn.relu
         output = tf.layers.conv2d(output, features, 5, padding='valid', activation=activation)
     return tf.sigmoid(output)
-
-def save_state(sess, path):
-    """Export all TensorFlow variables"""
-    with open(path, 'wb+') as outfile:
-        pickle.dump([sess.run(v) for v in tf.trainable_variables()], outfile)
-
-def restore_state(sess, path):
-    """Import all TensorFlow variables"""
-    if not os.path.exists(path):
-        return
-    with open(path, 'rb') as infile:
-        state = pickle.load(infile)
-    for var, val in zip(tf.trainable_variables(), state):
-        sess.run(tf.assign(var, val))

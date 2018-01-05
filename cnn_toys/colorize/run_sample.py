@@ -7,7 +7,8 @@ import numpy as np
 import tensorflow as tf
 
 from cnn_toys.data import dir_train_val
-from cnn_toys.colorize.model import colorize, restore_state
+from cnn_toys.saving import restore_state
+from cnn_toys.colorize.model import colorize
 
 def main(args):
     """Sample a batch of colorized images."""

@@ -5,7 +5,8 @@ import argparse
 import tensorflow as tf
 
 from cnn_toys.data import dir_train_val
-from cnn_toys.colorize.model import sample_loss, save_state, restore_state
+from cnn_toys.saving import save_state, restore_state
+from cnn_toys.colorize.model import sample_loss
 
 def main(args):
     """Training outer loop."""
