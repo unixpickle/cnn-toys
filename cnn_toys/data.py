@@ -26,6 +26,14 @@ def dir_train_val(image_dir, size):
         raise RuntimeError('not enough data')
     return images_dataset(train_paths, size), images_dataset(val_paths, size)
 
+def dir_dataset(image_dir, size):
+    """Create a Dataset of images from a directory."""
+    paths = []
+    for name in os.listdir(image_dir):
+        if not name.startswith('.'):
+            paths.append(os.path.join(image_dir, name))
+    return images_dataset(paths, size)
+
 def images_dataset(paths, size):
     """Create a Dataset of images from image file paths."""
     paths_ds = tf.data.Dataset.from_tensor_slices(paths)
