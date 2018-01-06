@@ -64,8 +64,7 @@ def discriminator(images):
     for num_filters in [128, 256, 512]:
         outputs = tf.layers.conv2d(outputs, num_filters, 4, strides=2, use_bias=False)
         outputs = activation(instance_norm(outputs))
-    flat = tf.reshape(outputs, [outputs.get_shape()[0].value, -1])
-    return tf.layers.dense(flat, 1, activation=None)
+    return tf.layers.conv2d(outputs, 1, 4)
 
 def gan_loss(real_image, gen_image, buffer_size):
     """Apply a discriminator and get (disc_loss, gen_loss)."""
