@@ -88,9 +88,10 @@ def generator(image):
                                   activation=activation)
     for _ in range(6):
         new_out = output
-        for _ in range(2):
+        for i in range(2):
+            activation = instance_norm if i == 1 else lambda x: tf.nn.relu(instance_norm(x))
             new_out = reflection_pad(new_out, 3)
-            new_out = tf.layers.conv2d(new_out, 128, 3, padding='valid')
+            new_out = tf.layers.conv2d(new_out, 128, 3, padding='valid', activation=activation)
         output = output + new_out
     for num_filters in [64, 32]:
         output = tf.layers.conv2d_transpose(output, num_filters, 3, strides=2, padding='same',
