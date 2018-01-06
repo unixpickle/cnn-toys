@@ -13,8 +13,8 @@ class CycleGAN:
     in a single package.
     """
     def __init__(self, real_x, real_y, buffer_size=50, cycle_weight=10):
-        self.real_x = real_x
-        self.real_y = real_y
+        self.real_x = _add_image_noise(real_x)
+        self.real_y = _add_image_noise(real_y)
         self._setup_generators()
         self._setup_discriminators(buffer_size)
         self._setup_cycles(cycle_weight)
@@ -131,3 +131,6 @@ def _add_grad_dicts(dict1, dict2):
         else:
             res[var] = grad
     return res
+
+def _add_image_noise(image):
+    return tf.clip_by_value(image + tf.random_normal(tf.shape(image), stddev=0.001), 0, 1)
