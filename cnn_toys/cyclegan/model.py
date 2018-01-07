@@ -28,9 +28,9 @@ class CycleGAN:
     def _setup_generators(self):
         start_vars = tf.trainable_variables()
         with tf.variable_scope('gen_x'):
-            self.gen_x = generator(self.real_y)
+            self.gen_x = generator(self.real_y, self._num_residual())
         with tf.variable_scope('gen_y'):
-            self.gen_y = generator(self.real_x)
+            self.gen_y = generator(self.real_x, self._num_residual())
         self.gen_vars = [v for v in tf.trainable_variables() if v not in start_vars]
 
     def _setup_discriminators(self, buffer_size):
@@ -45,9 +45,9 @@ class CycleGAN:
 
     def _setup_cycles(self, weight):
         with tf.variable_scope('gen_y', reuse=True):
-            self.cycle_y = generator(self.gen_x)
+            self.cycle_y = generator(self.gen_x, self._num_residual())
         with tf.variable_scope('gen_x', reuse=True):
-            self.cycle_x = generator(self.gen_y)
+            self.cycle_x = generator(self.gen_y, self._num_residual())
         self.cycle_loss = weight * (tf.reduce_mean(tf.abs(self.real_x - self.cycle_x)) +
                                     tf.reduce_mean(tf.abs(self.real_y - self.cycle_y)))
 
@@ -56,6 +56,11 @@ class CycleGAN:
         disc_grad = _grad_dict(self.disc_loss, self.disc_vars)
         total_grad = _add_grad_dicts(gen_grad, disc_grad)
         self.gradients = [(g, v) for v, g in total_grad.items()]
+
+    def _num_residual(self):
+        if self.real_x.get_shape()[1].value > 128:
+            return 9
+        return 6
 
 def discriminator(images):
     """Get a batch of discriminator outputs, one per image."""
@@ -76,7 +81,7 @@ def gan_loss(real_image, gen_image, buffer_size):
     gen_loss = tf.reduce_mean(tf.square(gen_outs - 1))
     return disc_loss, gen_loss
 
-def generator(image):
+def generator(image, num_residual):
     """Generate an image in Y using an image in X."""
     activation = lambda x: tf.nn.relu(instance_norm(x))
     output = reflection_pad(tf.expand_dims(image, 0), 7)
@@ -85,7 +90,7 @@ def generator(image):
         output = reflection_pad(output, 3)
         output = tf.layers.conv2d(output, num_filters, 3, strides=2, padding='valid',
                                   activation=activation)
-    for _ in range(6):
+    for _ in range(num_residual):
         new_out = output
         for i in range(2):
             activation = instance_norm if i == 1 else lambda x: tf.nn.relu(instance_norm(x))
