@@ -33,8 +33,8 @@ def main(args):
             terms = sess.run((optimize, model.disc_loss, model.gen_loss, model.cycle_loss))
             step = sess.run(global_step)
             print('step %d: disc=%f gen=%f cycle=%f' % ((step,) + terms[1:]))
-            save_state(sess, args.state_file)
             if step % args.sample_interval == 0:
+                save_state(sess, args.state_file)
                 print('saving samples...')
                 _generate_samples(sess, args, model, step)
 
