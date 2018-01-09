@@ -14,8 +14,8 @@ from cnn_toys.cyclegan.model import CycleGAN
 def main(args):
     """The main training loop."""
     print('loading datasets...')
-    real_x = _load_dataset(args.data_dir_1, args.size)
-    real_y = _load_dataset(args.data_dir_2, args.size)
+    real_x = tf.image.random_flip_left_right(_load_dataset(args.data_dir_1, args.size))
+    real_y = tf.image.random_flip_left_right(_load_dataset(args.data_dir_2, args.size))
     print('setting up model...')
     model = CycleGAN(real_x, real_y)
     global_step = tf.get_variable('global_step', dtype=tf.int64, shape=(),
