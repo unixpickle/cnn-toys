@@ -65,7 +65,8 @@ class CycleGAN:
 def discriminator(images):
     """Get a batch of discriminator outputs, one per image."""
     activation = tf.nn.leaky_relu
-    outputs = tf.layers.conv2d(images, 64, 4, strides=2, activation=activation)
+    outputs = 2 * images - 1
+    outputs = tf.layers.conv2d(outputs, 64, 4, strides=2, activation=activation)
     for num_filters in [128, 256, 512]:
         outputs = tf.layers.conv2d(outputs, num_filters, 4, strides=2, use_bias=False)
         outputs = activation(instance_norm(outputs))
@@ -84,7 +85,8 @@ def gan_loss(real_image, gen_image, buffer_size):
 def generator(image, num_residual):
     """Generate an image in Y using an image in X."""
     activation = lambda x: tf.nn.relu(instance_norm(x))
-    output = reflection_pad(tf.expand_dims(image, 0), 7)
+    output = 2 * image - 1
+    output = reflection_pad(tf.expand_dims(output, 0), 7)
     output = tf.layers.conv2d(output, 32, 7, padding='valid', activation=activation)
     for num_filters in [64, 128]:
         output = reflection_pad(output, 3)
