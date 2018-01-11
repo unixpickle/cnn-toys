@@ -13,12 +13,14 @@ class CycleGAN:
     in a single package.
     """
     def __init__(self, real_x, real_y, buffer_size=50, cycle_weight=10):
-        self.real_x = _add_image_noise(real_x)
-        self.real_y = _add_image_noise(real_y)
-        self._setup_generators()
-        self._setup_discriminators(buffer_size)
-        self._setup_cycles(cycle_weight)
-        self._setup_gradients()
+        initializer = tf.truncated_normal_initializer(stddev=0.02)
+        with tf.variable_scope('cyclegan', initializer=initializer):
+            self.real_x = _add_image_noise(real_x)
+            self.real_y = _add_image_noise(real_y)
+            self._setup_generators()
+            self._setup_discriminators(buffer_size)
+            self._setup_cycles(cycle_weight)
+            self._setup_gradients()
 
     def optimize(self, learning_rate=0.0002, beta1=0.5, global_step=None):
         """Create an Op that takes a training step."""
