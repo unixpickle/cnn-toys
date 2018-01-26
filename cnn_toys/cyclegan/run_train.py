@@ -55,7 +55,7 @@ def _load_dataset(dir_path, size):
     return dir_dataset(dir_path, size).repeat().make_one_shot_iterator().get_next()
 
 def _annealed_learning_rate(initial, iters, global_step):
-    frac_done = tf.cast(iters - global_step, tf.float32) / float(iters)
+    frac_done = 1 - tf.cast(iters - global_step, tf.float32) / float(iters)
     return tf.cond(frac_done < 0.5, lambda: initial, lambda: (1 - frac_done) * 2 * initial)
 
 def _generate_samples(sess, args, model, step):
