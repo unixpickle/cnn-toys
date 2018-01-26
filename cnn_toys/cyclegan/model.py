@@ -42,7 +42,7 @@ class CycleGAN:
         with tf.variable_scope('disc_y'):
             disc_y_loss, gen_y_loss = gan_loss(self.real_y, self.gen_y, buffer_size)
         self.disc_vars = [v for v in tf.trainable_variables() if v not in start_vars]
-        self.disc_loss = disc_x_loss + disc_y_loss
+        self.disc_loss = (disc_x_loss + disc_y_loss) / 2
         self.gen_loss = gen_x_loss + gen_y_loss
 
     def _setup_cycles(self, weight):
