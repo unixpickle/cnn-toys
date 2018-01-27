@@ -14,8 +14,10 @@ from cnn_toys.cyclegan.model import CycleGAN
 def main(args):
     """The main training loop."""
     print('loading datasets...')
-    real_x = tf.image.random_flip_left_right(_load_dataset(args.data_dir_1, args.size))
-    real_y = tf.image.random_flip_left_right(_load_dataset(args.data_dir_2, args.size))
+    real_x = tf.image.random_flip_left_right(_load_dataset(args.data_dir_1, args.size,
+                                                           args.bigger_size))
+    real_y = tf.image.random_flip_left_right(_load_dataset(args.data_dir_2, args.size,
+                                                           args.bigger_size))
     print('setting up model...')
     model = CycleGAN(real_x, real_y)
     global_step = tf.get_variable('global_step', dtype=tf.int64, shape=(),
@@ -42,7 +44,8 @@ def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data-dir-1', help='first data directory', default='data_1')
     parser.add_argument('--data-dir-2', help='second data directory', default='data_2')
-    parser.add_argument('--size', help='image size', type=int, default=128)
+    parser.add_argument('--size', help='image size', type=int, default=256)
+    parser.add_argument('--bigger-size', help='size to crop from', type=int, default=286)
     parser.add_argument('--step-size', help='training step size', type=float, default=2e-4)
     parser.add_argument('--state-file', help='state output file', default='state.pkl')
     parser.add_argument('--iters', help='number of training steps', type=int, default=100000)
@@ -51,8 +54,9 @@ def _parse_args():
     parser.add_argument('--sample-count', help='number of samples to draw', type=int, default=16)
     return parser.parse_args()
 
-def _load_dataset(dir_path, size):
-    return dir_dataset(dir_path, size).repeat().make_one_shot_iterator().get_next()
+def _load_dataset(dir_path, size, bigger_size):
+    dataset = dir_dataset(dir_path, size, bigger_size=bigger_size)
+    return dataset.repeat().make_one_shot_iterator().get_next()
 
 def _annealed_learning_rate(initial, iters, global_step):
     frac_done = 1 - tf.cast(iters - global_step, tf.float32) / float(iters)
