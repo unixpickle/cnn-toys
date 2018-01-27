@@ -39,6 +39,7 @@ def main(args):
                 save_state(sess, args.state_file)
                 print('saving samples...')
                 _generate_samples(sess, args, model, step)
+                _generate_cycle_samples(sess, args, model, step)
 
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
