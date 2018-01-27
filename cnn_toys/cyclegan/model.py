@@ -70,7 +70,10 @@ def discriminator(images):
     outputs = 2 * images - 1
     outputs = tf.layers.conv2d(outputs, 64, 4, strides=2, activation=activation)
     for num_filters in [128, 256, 512]:
-        outputs = tf.layers.conv2d(outputs, num_filters, 4, strides=2, use_bias=False)
+        strides = 2
+        if num_filters == 512:
+            strides = 1
+        outputs = tf.layers.conv2d(outputs, num_filters, 4, strides=strides, use_bias=False)
         outputs = activation(instance_norm(outputs))
     return tf.layers.conv2d(outputs, 1, 4)
 
