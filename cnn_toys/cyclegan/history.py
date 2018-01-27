@@ -20,7 +20,7 @@ def history_image(image, buffer_size, name='image_buffer'):
     with tf.variable_scope(None, default_name=name):
         buf = tf.get_variable('images', shape=[buffer_size] + [x.value for x in image.get_shape()],
                               dtype=image.dtype, trainable=False)
-        size = tf.get_variable('size', dtype=tf.int32, initializer=0)
+        size = tf.get_variable('size', dtype=tf.int32, initializer=0, trainable=False)
         def _insert_new():
             insert_idx = tf.assign_add(size, 1) - 1
             return _assign_buf_entry(buf, insert_idx, image)
