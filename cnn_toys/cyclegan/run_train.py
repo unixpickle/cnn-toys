@@ -63,15 +63,23 @@ def _annealed_learning_rate(initial, iters, global_step):
     return tf.cond(frac_done < 0.5, lambda: initial, lambda: (1 - frac_done) * 2 * initial)
 
 def _generate_samples(sess, args, model, step):
+    _generate_grid(sess, args, step, 'samples',
+                   (model.real_x, model.gen_y, model.real_y, model.gen_x))
+
+def _generate_cycle_samples(sess, args, model, step):
+    _generate_grid(sess, args, step, 'cycles',
+                   (model.real_x, model.cycle_x, model.real_y, model.cycle_y))
+
+def _generate_grid(sess, args, step, filename, tensors):
     if not os.path.exists(args.sample_dir):
         os.mkdir(args.sample_dir)
     grid_img = np.zeros((args.size * args.sample_count, args.size * 4, 3), dtype='float32')
     for i in range(args.sample_count):
-        images = sess.run((model.real_x, model.gen_y, model.real_y, model.gen_x))
+        images = sess.run(tensors)
         for j, image in enumerate(images):
             grid_img[i*args.size:(i+1)*args.size, j*args.size:(j+1)*args.size, :] = image
     img = Image.fromarray((grid_img * 0xff).astype('uint8'), 'RGB')
-    img.save(os.path.join(args.sample_dir, 'samples_%d.png' % step))
+    img.save(os.path.join(args.sample_dir, '%s_%d.png' % (filename, step)))
 
 if __name__ == '__main__':
     main(_parse_args())
