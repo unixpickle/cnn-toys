@@ -75,7 +75,7 @@ def discriminator(images):
             strides = 1
         outputs = tf.layers.conv2d(outputs, num_filters, 4, strides=strides, use_bias=False)
         outputs = activation(instance_norm(outputs))
-    return tf.layers.conv2d(outputs, 1, 4)
+    return tf.layers.conv2d(outputs, 1, 1)
 
 def gan_loss(real_image, gen_image, buffer_size):
     """Apply a discriminator and get (disc_loss, gen_loss)."""
