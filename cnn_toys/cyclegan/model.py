@@ -70,9 +70,12 @@ def discriminator(images):
     outputs = 2 * images - 1
     outputs = tf.layers.conv2d(outputs, 64, 4, strides=2, activation=activation)
     for num_filters in [128, 256, 512]:
-        outputs = tf.layers.conv2d(outputs, num_filters, 4, strides=2, use_bias=False)
+        strides = 2
+        if num_filters == 512:
+            strides = 1
+        outputs = tf.layers.conv2d(outputs, num_filters, 4, strides=strides, use_bias=False)
         outputs = activation(instance_norm(outputs))
-    return tf.layers.conv2d(outputs, 1, 4)
+    return tf.layers.conv2d(outputs, 1, 1)
 
 def gan_loss(real_image, gen_image, buffer_size):
     """Apply a discriminator and get (disc_loss, gen_loss)."""
@@ -89,21 +92,22 @@ def generator(image, num_residual):
     activation = lambda x: tf.nn.relu(instance_norm(x))
     output = 2 * image - 1
     output = reflection_pad(tf.expand_dims(output, 0), 7)
-    output = tf.layers.conv2d(output, 32, 7, padding='valid', activation=activation)
+    output = tf.layers.conv2d(output, 32, 7, padding='valid', activation=activation, use_bias=False)
     for num_filters in [64, 128]:
         output = reflection_pad(output, 3)
         output = tf.layers.conv2d(output, num_filters, 3, strides=2, padding='valid',
-                                  activation=activation)
+                                  activation=activation, use_bias=False)
     for _ in range(num_residual):
         new_out = output
         for i in range(2):
             activation = instance_norm if i == 1 else lambda x: tf.nn.relu(instance_norm(x))
             new_out = reflection_pad(new_out, 3)
-            new_out = tf.layers.conv2d(new_out, 128, 3, padding='valid', activation=activation)
+            new_out = tf.layers.conv2d(new_out, 128, 3, padding='valid', activation=activation,
+                                       use_bias=False)
         output = output + new_out
     for num_filters in [64, 32]:
         output = tf.layers.conv2d_transpose(output, num_filters, 3, strides=2, padding='same',
-                                            activation=activation)
+                                            activation=activation, use_bias=False)
     output = reflection_pad(output, 7)
     return tf.sigmoid(tf.layers.conv2d(output, 3, 7, padding='valid'))[0]
 
