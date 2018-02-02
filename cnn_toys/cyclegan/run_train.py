@@ -9,6 +9,7 @@ import tensorflow as tf
 
 from cnn_toys.data import dir_dataset
 from cnn_toys.saving import save_state, restore_state
+from cnn_toys.schedules import half_annealed_lr
 from cnn_toys.cyclegan.model import CycleGAN
 
 def main(args):
@@ -23,7 +24,7 @@ def main(args):
     global_step = tf.get_variable('global_step', dtype=tf.int64, shape=(),
                                   initializer=tf.zeros_initializer())
     optimize = model.optimize(
-        learning_rate=_annealed_learning_rate(args.step_size, args.iters, global_step),
+        learning_rate=half_annealed_lr(args.step_size, args.iters, global_step),
         global_step=global_step)
     with tf.Session() as sess:
         print('initializing variables...')
@@ -58,10 +59,6 @@ def _parse_args():
 def _load_dataset(dir_path, size, bigger_size):
     dataset = dir_dataset(dir_path, size, bigger_size=bigger_size)
     return dataset.repeat().make_one_shot_iterator().get_next()
-
-def _annealed_learning_rate(initial, iters, global_step):
-    frac_done = 1 - tf.cast(iters - global_step, tf.float32) / float(iters)
-    return tf.cond(frac_done < 0.5, lambda: initial, lambda: (1 - frac_done) * 2 * initial)
 
 def _generate_samples(sess, args, model, step):
     _generate_grid(sess, args, step, 'samples',
