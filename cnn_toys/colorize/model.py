@@ -22,7 +22,8 @@ def colorize(input_ph):
     output = tf.pad(output, [[0, 0], [3, 3], [3, 3], [0, 0]], mode='REFLECT')
     output = tf.layers.conv2d(output, 32, 7, activation=tf.nn.relu)
     for features in [64, 128]:
-        output = tf.layers.conv2d(output, features, 3, activation=activation)
+        output = tf.pad(output, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='REFLECT')
+        output = tf.layers.conv2d(output, features, 3, strides=2, activation=activation)
     for _ in range(6):
         old_output = output
         output = tf.pad(output, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='REFLECT')
@@ -30,7 +31,9 @@ def colorize(input_ph):
         output = tf.pad(output, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='REFLECT')
         output = tf.layers.conv2d(output, 128, 3, activation=tf.contrib.layers.layer_norm)
         output = tf.nn.relu(old_output + output)
-    output = tf.layers.conv2d_transpose(output, 64, 3, strides=2, activation=activation)
-    output = tf.layers.conv2d_transpose(output, 32, 3, strides=2, activation=activation)
+    output = tf.layers.conv2d_transpose(output, 64, 3, strides=2, padding='same',
+                                        activation=activation)
+    output = tf.layers.conv2d_transpose(output, 32, 3, strides=2, padding='same',
+                                        activation=activation)
     output = tf.pad(output, [[0, 0], [3, 3], [3, 3], [0, 0]], mode='REFLECT')
     return tf.layers.conv2d(output, 3, 7, activation=tf.sigmoid)
