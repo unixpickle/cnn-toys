@@ -17,11 +17,20 @@ def colorize(input_ph):
     Apply a neural network to produce a colorized version
     of the input images.
     """
+    activation = lambda x: tf.nn.relu(tf.contrib.layers.layer_norm(x))
     output = input_ph
-    for features in [32, 64, 128, 256, 128, 64, 32, 3]:
-        output = tf.pad(output, [[0, 0], [2, 2], [2, 2], [0, 0]], mode='REFLECT')
-        activation = None
-        if features != 3:
-            activation = tf.nn.relu
-        output = tf.layers.conv2d(output, features, 5, padding='valid', activation=activation)
-    return tf.sigmoid(output)
+    output = tf.pad(output, [[0, 0], [3, 3], [3, 3], [0, 0]], mode='REFLECT')
+    output = tf.layers.conv2d(output, 32, 7, activation=tf.nn.relu)
+    for features in [64, 128]:
+        output = tf.layers.conv2d(output, features, 3, activation=activation)
+    for _ in range(6):
+        old_output = output
+        output = tf.pad(output, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='REFLECT')
+        output = tf.layers.conv2d(output, 128, 3, activation=activation)
+        output = tf.pad(output, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='REFLECT')
+        output = tf.layers.conv2d(output, 128, 3, activation=tf.contrib.layers.layer_norm)
+        output = tf.nn.relu(old_output + output)
+    output = tf.layers.conv2d_transpose(output, 64, 3, strides=2, activation=activation)
+    output = tf.layers.conv2d_transpose(output, 32, 3, strides=2, activation=activation)
+    output = tf.pad(output, [[0, 0], [3, 3], [3, 3], [0, 0]], mode='REFLECT')
+    return tf.layers.conv2d(output, 3, 7, activation=tf.sigmoid)
