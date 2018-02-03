@@ -72,7 +72,7 @@ def _generate_grid(sess, args, step, filename, tensors):
     if not os.path.exists(args.sample_dir):
         os.mkdir(args.sample_dir)
     grid = []
-    for i in range(args.sample_count):
+    for _ in range(args.sample_count):
         grid.append(sess.run(tensors))
     save_image_grid(np.array(grid), os.path.join(args.sample_dir, '%s_%d.png' % (filename, step)))
 
