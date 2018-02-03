@@ -2,13 +2,13 @@
 
 import argparse
 
-from PIL import Image
 import numpy as np
 import tensorflow as tf
 
-from cnn_toys.data import dir_train_val
-from cnn_toys.saving import restore_state
 from cnn_toys.colorize.model import colorize
+from cnn_toys.data import dir_train_val
+from cnn_toys.graphics import save_image_grid
+from cnn_toys.saving import restore_state
 
 def main(args):
     """Sample a batch of colorized images."""
@@ -20,14 +20,8 @@ def main(args):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         restore_state(sess, args.state_file)
-        images, grayscale, colorized = sess.run((images, grayscale, colorized))
-        res = np.zeros((args.size * args.batch, args.size * 3, 3), dtype='float32')
-        for i in range(args.batch):
-            res[i*args.size:(i+1)*args.size, 0:args.size, :] = images[i]
-            res[i*args.size:(i+1)*args.size, args.size:2*args.size, :] = grayscale[i]
-            res[i*args.size:(i+1)*args.size, 2*args.size:3*args.size, :] = colorized[i]
-        img = Image.fromarray((res * 0xff).astype('uint8'), 'RGB')
-        img.save("images.png")
+        rows = sess.run([images, grayscale, colorized])
+        save_image_grid(np.array(rows), 'images.png')
 
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
