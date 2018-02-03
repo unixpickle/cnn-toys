@@ -6,4 +6,5 @@ I want to use this repo to play with different applications of CNNs. That way, I
 
 # Contents
 
- * [colorize](colorize) - Grayscale -> color predictor. *Current status:* trying to find an architecture that learns _at all_.
+ * [colorize](cnn_toys/colorize) - Grayscale -> color predictor. *Current status:* the model sometimes colors skies in correctly, but it's generally pretty terrible.
+ * [cyclegan](cnn_toys/cyclegan) - A re-implementation of [CycleGAN](https://github.com/junyanz/CycleGAN). *Current status:* works fairly well.
