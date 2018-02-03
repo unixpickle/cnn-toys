@@ -3,14 +3,14 @@
 import argparse
 import os
 
-from PIL import Image
 import numpy as np
 import tensorflow as tf
 
+from cnn_toys.cyclegan.model import CycleGAN
 from cnn_toys.data import dir_dataset
+from cnn_toys.graphics import save_image_grid
 from cnn_toys.saving import save_state, restore_state
 from cnn_toys.schedules import half_annealed_lr
-from cnn_toys.cyclegan.model import CycleGAN
 
 def main(args):
     """The main training loop."""
@@ -71,13 +71,10 @@ def _generate_cycle_samples(sess, args, model, step):
 def _generate_grid(sess, args, step, filename, tensors):
     if not os.path.exists(args.sample_dir):
         os.mkdir(args.sample_dir)
-    grid_img = np.zeros((args.size * args.sample_count, args.size * 4, 3), dtype='float32')
+    grid = []
     for i in range(args.sample_count):
-        images = sess.run(tensors)
-        for j, image in enumerate(images):
-            grid_img[i*args.size:(i+1)*args.size, j*args.size:(j+1)*args.size, :] = image
-    img = Image.fromarray((grid_img * 0xff).astype('uint8'), 'RGB')
-    img.save(os.path.join(args.sample_dir, '%s_%d.png' % (filename, step)))
+        grid.append(sess.run(tensors))
+    save_image_grid(np.array(grid), os.path.join(args.sample_dir, '%s_%d.png' % (filename, step)))
 
 if __name__ == '__main__':
     main(_parse_args())
