@@ -20,7 +20,7 @@ def main(args):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         restore_state(sess, args.state_file)
-        rows = sess.run([images, grayscale, colorized])
+        rows = sess.run([images, tf.tile(grayscale, [1, 1, 1, 3]), colorized])
         save_image_grid(np.array(rows), 'images.png')
 
 def _parse_args():
