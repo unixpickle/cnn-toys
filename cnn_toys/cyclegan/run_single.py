@@ -28,7 +28,7 @@ def main(args):
         sess.run(tf.global_variables_initializer())
         print('attempting to restore model...')
         restore_state(sess, args.state_file)
-        print('loading image...')
+        print('running model...')
         row = sess.run([model.gen_x, model.gen_y])
         save_image_grid(np.array([row]), args.out_file)
 
