@@ -65,6 +65,36 @@ class FactorHalf(NVPLayer):
     def inverse(self, outputs, latents):
         return tf.concat([outputs, latents], axis=-1)
 
+class Squeeze(NVPLayer):
+    """
+    A layer that squeezes 2x2x1 blocks into 1x1x4 blocks.
+    """
+    def forward(self, inputs):
+        assert all([x.value % 2 == 0 for x in inputs.get_shape()[1:3]]), 'even shape required'
+        conv_filter = self._permutation_filter(inputs.get_shape()[-1].value, inputs.dtype)
+        return tf.nn.conv2d(inputs, conv_filter, [1, 2, 2, 1], 'VALID')
+
+    def inverse(self, outputs, latents):
+        assert latents == ()
+        in_depth = outputs.get_shape()[-1].value // 4
+        conv_filter = self._permutation_filter(in_depth, outputs.dtype)
+        out_shape = ([tf.shape(outputs)[0]] + [x.value * 2 for x in outputs.get_shape()[1:3]] +
+                     [in_depth])
+        return tf.nn.conv2d_transpose(outputs, conv_filter, out_shape, [1, 2, 2, 1], 'VALID')
+
+    @staticmethod
+    def _permutation_filter(depth, dtype):
+        """
+        Generate a convolutional filter that performs the
+        squeeze operation.
+        """
+        res = np.zeros((2, 2, depth, depth * 4))
+        for i in range(depth):
+            for row in range(2):
+                for col in range(2):
+                    res[row, col, i, row * 2 + col] = 1
+        return tf.constant(res, dtype=dtype)
+
 class MaskedConv(NVPLayer):
     """
     A masked convolution NVP transformation.
