@@ -152,11 +152,26 @@ def checkerboard_mask(is_even, tensor):
     Create a checkerboard mask in the shape of a Tensor.
 
     Args:
-      is_even: determines which of two masks this is.
+      is_even: determines which of two masks to use.
       tensor: the Tensor whose shape to match.
     """
     result = np.zeros([tensor.get_shape()[1].value, tensor.get_shape()[2].value, 1], dtype='bool')
     for row in range(result.shape[0]):
         for col in range(result.shape[1]):
-            result[row, col] = ((row + col) % 2 == 0) == is_even
-    return tf.constant(result)
+            result[row, col] = (((row + col) % 2 == 0) == is_even)
+    # Broadcast into the shape of the tensor.
+    return tf.zeros(shape=tf.shape(tensor), dtype=tf.bool) + tf.constant(result)
+
+def depth_mask(is_even, tensor):
+    """
+    Create a depth mask in the shape of a Tensor.
+
+    Args:
+      is_even: determines which of two masks to use.
+      tensor: the Tensor whose shape to match.
+    """
+    if is_even:
+        mask = [True, True, False, False]
+    else:
+        mask = [False, False, True, True]
+    return tf.zeros(shape=tf.shape(tensor), dtype=tf.bool) + tf.constant(mask)
