@@ -8,3 +8,4 @@ I want to use this repo to play with different applications of CNNs. That way, I
 
  * [colorize](cnn_toys/colorize) - Grayscale -> color predictor. *Current status:* the model sometimes colors skies in correctly, but it's generally pretty terrible.
  * [cyclegan](cnn_toys/cyclegan) - A re-implementation of [CycleGAN](https://github.com/junyanz/CycleGAN). *Current status:* works fairly well.
+ * [real_nvp](cnn_toys/real_nvp) - A re-implementation of [real NVP](https://arxiv.org/abs/1605.08803). *Current status:* work-in-progress.
