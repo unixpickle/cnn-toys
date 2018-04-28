@@ -72,7 +72,8 @@ class Squeeze(NVPLayer):
     def forward(self, inputs):
         assert all([x.value % 2 == 0 for x in inputs.get_shape()[1:3]]), 'even shape required'
         conv_filter = self._permutation_filter(inputs.get_shape()[-1].value, inputs.dtype)
-        return tf.nn.conv2d(inputs, conv_filter, [1, 2, 2, 1], 'VALID')
+        return (tf.nn.conv2d(inputs, conv_filter, [1, 2, 2, 1], 'VALID'),
+                (), tf.constant(0, dtype=inputs.dtype))
 
     def inverse(self, outputs, latents):
         assert latents == ()
@@ -92,7 +93,7 @@ class Squeeze(NVPLayer):
         for i in range(depth):
             for row in range(2):
                 for col in range(2):
-                    res[row, col, i, row * 2 + col] = 1
+                    res[row, col, i, 4 * i + row * 2 + col] = 1
         return tf.constant(res, dtype=dtype)
 
 class MaskedConv(NVPLayer):
