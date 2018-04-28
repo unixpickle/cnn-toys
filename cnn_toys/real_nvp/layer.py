@@ -11,6 +11,14 @@ class NVPLayer(ABC):
     """
     A layer in a real NVP model.
     """
+    @property
+    def num_latents(self):
+        """
+        Get the size of the latent tuple returned by
+        forward().
+        """
+        return 0
+
     @abstractmethod
     def forward(self, inputs):
         """
@@ -45,8 +53,11 @@ class NVPLayer(ABC):
 
 class FactorHalf(NVPLayer):
     """
-    An NVPLayer that factors out half of the inputs.
+    A layer that factors out half of the inputs.
     """
+    def num_latents(self):
+        return 1
+
     def forward(self, inputs):
         half_depth = inputs.get_shape()[-1].value // 2
         return inputs[:half_depth], (inputs[half_depth:]), tf.constant(0, dtype=inputs.dtype)
