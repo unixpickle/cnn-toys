@@ -27,7 +27,7 @@ def main(args):
         nvp.FactorHalf()
     ]
     network = nvp.Network([nvp.PaddedLogit()] + (main_layers * 3))
-    loss = tf.reduce_mean(nvp.log_likelihood(network, images))
+    loss = -tf.reduce_mean(nvp.log_likelihood(network, images))
     optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(loss)
     with tf.Session() as sess:
         print('initializing variables...')
