@@ -45,6 +45,7 @@ def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data-dir', help='data directory', default='data')
     parser.add_argument('--size', help='image size', type=int, default=64)
+    parser.add_argument('--batch', help='batch size', type=int, default=32)
     parser.add_argument('--step-size', help='training step size', type=float, default=2e-4)
     parser.add_argument('--state-file', help='state output file', default='state.pkl')
     parser.add_argument('--save-interval', help='iterations per save', type=int, default=100)
