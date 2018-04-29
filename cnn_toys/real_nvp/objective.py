@@ -22,5 +22,5 @@ def gaussian_log_prob(tensor):
     For each sub-tensor in a batch, compute the Gaussian
     log-density.
     """
-    dist = tf.distributions.Normal(0, 0)
+    dist = tf.distributions.Normal(0.0, 1.0)
     return sum_batch(dist.log_prob(tensor))
