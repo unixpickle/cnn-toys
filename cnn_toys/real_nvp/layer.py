@@ -116,10 +116,12 @@ class FactorHalf(NVPLayer):
 
     def forward(self, inputs):
         half_depth = inputs.get_shape()[-1].value // 2
-        return inputs[:half_depth], (inputs[half_depth:],), tf.constant(0, dtype=inputs.dtype)
+        return (inputs[..., :half_depth], (inputs[..., half_depth:],),
+                tf.constant(0, dtype=inputs.dtype))
 
     def inverse(self, outputs, latents):
-        return tf.concat([outputs, latents], axis=-1)
+        assert len(latents) == 1
+        return tf.concat([outputs, latents[0]], axis=-1)
 
 class Squeeze(NVPLayer):
     """
@@ -169,7 +171,6 @@ class MaskedConv(NVPLayer):
         self.mask_fn = mask_fn
         self.kernel_size = kernel_size
         self.conv_kwargs = conv_kwargs
-        self._tanh_scale = None
 
     def forward(self, inputs):
         biases, log_scales = self._apply_masked(inputs)
@@ -187,22 +188,24 @@ class MaskedConv(NVPLayer):
         """
         mask = self.mask_fn(inputs)
         depth = inputs.get_shape()[3].value
-        masked = tf.cast(mask, inputs.dtype) * inputs
-        output = tf.layers.conv2d(masked, depth * 2, self.kernel_size, **self.conv_kwargs)
-        biases = output[..., :depth]
+        masked = tf.where(mask, inputs, tf.zeros_like(inputs))
+        output = tf.layers.conv2d(masked, depth * 2, self.kernel_size, padding='same',
+                                  **self.conv_kwargs)
+        bias_params = output[..., :depth]
         scale_params = output[..., depth:]
+        biases = tf.where(mask, tf.zeros_like(inputs), bias_params)
         log_scales = tf.where(mask,
                               tf.zeros_like(inputs),
                               tf.tanh(scale_params) * self._get_tanh_scale(inputs))
         return biases, log_scales
 
-    def _get_tanh_scale(self, in_out):
-        if self._tanh_scale is None:
-            self._tanh_scale = tf.get_variable('tanh_scale',
-                                               shape=[x.value for x in in_out.get_shape()[1:]],
-                                               dtype=in_out.dtype,
-                                               initializer=tf.ones_initializer())
-        return self._tanh_scale
+    @staticmethod
+    def _get_tanh_scale(in_out):
+        with tf.variable_scope(None, default_name='mask_params'):
+            return tf.get_variable('tanh_scale',
+                                   shape=[x.value for x in in_out.get_shape()[1:]],
+                                   dtype=in_out.dtype,
+                                   initializer=tf.ones_initializer())
 
 def checkerboard_mask(is_even, tensor):
     """
@@ -212,12 +215,11 @@ def checkerboard_mask(is_even, tensor):
       is_even: determines which of two masks to use.
       tensor: the Tensor whose shape to match.
     """
-    result = np.zeros([tensor.get_shape()[1].value, tensor.get_shape()[2].value, 1], dtype='bool')
+    result = np.zeros([x.value for x in tensor.get_shape()[1:]], dtype='bool')
     for row in range(result.shape[0]):
         for col in range(result.shape[1]):
-            result[row, col] = (((row + col) % 2 == 0) == is_even)
-    # Broadcast into the shape of the tensor.
-    return tf.zeros(shape=tf.shape(tensor), dtype=tf.bool) + tf.constant(result)
+            result[row, col, :] = (((row + col) % 2 == 0) == is_even)
+    return tf.tile(tf.expand_dims(result, axis=0), [tf.shape(tensor)[0], 1, 1, 1])
 
 def depth_mask(is_even, tensor):
     """
@@ -227,8 +229,11 @@ def depth_mask(is_even, tensor):
       is_even: determines which of two masks to use.
       tensor: the Tensor whose shape to match.
     """
+    assert tensor.get_shape()[-1] % 4 == 0, 'depth must be divisible by 4'
     if is_even:
         mask = [True, True, False, False]
     else:
         mask = [False, False, True, True]
-    return tf.zeros(shape=tf.shape(tensor), dtype=tf.bool) + tf.constant(mask)
+    one_dim = tf.tile(tf.constant(mask, dtype=tf.bool), [tensor.get_shape()[-1].value // 4])
+    # Broadcast, since + doesn't work for booleans.
+    return tf.logical_or(one_dim, tf.zeros(shape=tf.shape(tensor), dtype=tf.bool))
