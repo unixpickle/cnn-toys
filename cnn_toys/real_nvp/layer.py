@@ -90,21 +90,21 @@ class Network(NVPLayer):
 
 class PaddedLogit(NVPLayer):
     """
-    An NVP layer that applies logit(a + (1-a)*x).
+    An NVP layer that applies `logit(a + (1-2a)x)`.
     """
     def __init__(self, alpha=0.05):
         self.alpha = alpha
 
     def forward(self, inputs):
-        padded = self.alpha + (1 - self.alpha) * inputs
+        padded = self.alpha + (1 - 2 * self.alpha) * inputs
         logits = tf.log(padded / (1 - padded))
-        log_dets = tf.log(1 / padded + 1 / (1 - padded)) + tf.log((1 - self.alpha))
+        log_dets = tf.log(1 / padded + 1 / (1 - padded)) + tf.log((1 - 2 * self.alpha))
         return logits, (), sum_batch(log_dets)
 
     def inverse(self, outputs, latents):
         assert latents == ()
         sigmoids = tf.nn.sigmoid(outputs)
-        return (sigmoids - self.alpha) / (1 - self.alpha)
+        return (sigmoids - self.alpha) / (1 - 2 * self.alpha)
 
 class FactorHalf(NVPLayer):
     """
