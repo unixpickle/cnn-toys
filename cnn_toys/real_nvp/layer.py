@@ -34,7 +34,7 @@ class NVPLayer(ABC):
               last layer of the network.
             latents: A tuple of factored out Tensors.
               This may be an empty tuple.
-            log_det: the log of the determinant of the Jacobian
+            log_det: a batch of log of the determinants.
         """
         pass
 
@@ -66,7 +66,7 @@ class Network(NVPLayer):
     def forward(self, inputs):
         latents = []
         outputs = inputs
-        log_det = tf.zeros(shape=(), dtype=inputs.dtype)
+        log_det = tf.zeros(shape=[tf.shape(inputs)[0]], dtype=inputs.dtype)
         for layer in self.layers:
             outputs, sub_latents, sub_log_det = layer.forward(outputs)
             latents.extend(sub_latents)
@@ -99,7 +99,7 @@ class PaddedLogit(NVPLayer):
         padded = self.alpha + (1 - self.alpha) * inputs
         logits = tf.log(padded / (1 - padded))
         log_dets = tf.log(1 / padded + 1 / (1 - padded)) + tf.log((1 - self.alpha))
-        return logits, (), tf.reduce_sum(log_dets)
+        return logits, (), sum_batch(log_dets)
 
     def inverse(self, outputs, latents):
         assert latents == ()
@@ -174,7 +174,7 @@ class MaskedConv(NVPLayer):
 
     def forward(self, inputs):
         biases, log_scales = self._apply_masked(inputs)
-        log_det = tf.reduce_sum(log_scales)
+        log_det = sum_batch(log_scales)
         return inputs * tf.exp(log_scales) + biases, (), log_det
 
     def inverse(self, outputs, latents):
@@ -237,3 +237,9 @@ def depth_mask(is_even, tensor):
     one_dim = tf.tile(tf.constant(mask, dtype=tf.bool), [tensor.get_shape()[-1].value // 4])
     # Broadcast, since + doesn't work for booleans.
     return tf.logical_or(one_dim, tf.zeros(shape=tf.shape(tensor), dtype=tf.bool))
+
+def sum_batch(tensor):
+    """
+    Compute a 1-D batch of sums.
+    """
+    return tf.reduce_sum(tf.reshape(tensor, [tf.shape(tensor)[0], -1]), axis=1)
