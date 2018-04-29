@@ -77,13 +77,34 @@ class Network(NVPLayer):
     def inverse(self, outputs, latents):
         assert outputs is None
         assert len(latents) == self.num_latents
+        inputs = latents[-1]
         latents = latents[:-1]
-        inputs = latents[0]
-        for layer in self.layers:
-            sub_latents = latents[-layer.num_latents:]
-            latents = latents[:-layer.num_latents]
+        for layer in self.layers[::-1]:
+            if layer.num_latents > 0:
+                sub_latents = latents[-layer.num_latents:]
+                latents = latents[:-layer.num_latents]
+            else:
+                sub_latents = ()
             inputs = layer.inverse(inputs, sub_latents)
         return inputs
+
+class PaddedLogit(NVPLayer):
+    """
+    An NVP layer that applies logit(a + (1-a)*x).
+    """
+    def __init__(self, alpha=0.05):
+        self.alpha = alpha
+
+    def forward(self, inputs):
+        padded = self.alpha + (1 - self.alpha) * inputs
+        logits = tf.log(padded / (1 - padded))
+        log_dets = tf.log(1 / padded + 1 / (1 - padded))
+        return logits, (), tf.reduce_sum(log_dets)
+
+    def inverse(self, outputs, latents):
+        assert latents == ()
+        sigmoids = tf.nn.sigmoid(outputs)
+        return (sigmoids - self.alpha) / (1 - self.alpha)
 
 class FactorHalf(NVPLayer):
     """
