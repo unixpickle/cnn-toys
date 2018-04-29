@@ -36,8 +36,8 @@ def main(args):
         restore_state(sess, args.state_file)
         print('training...')
         for i in count():
-            loss, _ = sess.run((loss, optimize))
-            print('step %d: loss=%f' % (i, loss))
+            cur_loss, _ = sess.run((loss, optimize))
+            print('step %d: loss=%f' % (i, cur_loss))
             if i % args.save_interval == 0:
                 save_state(sess, args.state_file)
 
