@@ -30,7 +30,8 @@ class NVPLayer(ABC):
         Returns:
           A tuple (outputs, latents, log_det):
             outputs: the values to be passed to the next
-              layer of the network.
+              layer of the network. May be None for the
+              last layer of the network.
             latents: A tuple of factored out Tensors.
               This may be an empty tuple.
             log_det: the log of the determinant of the Jacobian
@@ -51,16 +52,50 @@ class NVPLayer(ABC):
         """
         pass
 
+class Network(NVPLayer):
+    """
+    A feed-forward composition of NVP layers.
+    """
+    def __init__(self, layers):
+        self.layers = layers
+
+    @property
+    def num_latents(self):
+        return 1 + sum(l.num_latents for l in self.layers)
+
+    def forward(self, inputs):
+        latents = []
+        outputs = inputs
+        log_det = tf.zeros(shape=(), dtype=inputs.dtype)
+        for layer in self.layers:
+            outputs, sub_latents, sub_log_det = layer.forward(outputs)
+            latents.extend(sub_latents)
+            log_det = log_det + sub_log_det
+        latents.append(outputs)
+        return None, tuple(latents), log_det
+
+    def inverse(self, outputs, latents):
+        assert outputs is None
+        assert len(latents) == self.num_latents
+        latents = latents[:-1]
+        inputs = latents[0]
+        for layer in self.layers:
+            sub_latents = latents[-layer.num_latents:]
+            latents = latents[:-layer.num_latents]
+            inputs = layer.inverse(inputs, sub_latents)
+        return inputs
+
 class FactorHalf(NVPLayer):
     """
     A layer that factors out half of the inputs.
     """
+    @property
     def num_latents(self):
         return 1
 
     def forward(self, inputs):
         half_depth = inputs.get_shape()[-1].value // 2
-        return inputs[:half_depth], (inputs[half_depth:]), tf.constant(0, dtype=inputs.dtype)
+        return inputs[:half_depth], (inputs[half_depth:],), tf.constant(0, dtype=inputs.dtype)
 
     def inverse(self, outputs, latents):
         return tf.concat([outputs, latents], axis=-1)
