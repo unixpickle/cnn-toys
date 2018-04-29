@@ -98,7 +98,7 @@ class PaddedLogit(NVPLayer):
     def forward(self, inputs):
         padded = self.alpha + (1 - self.alpha) * inputs
         logits = tf.log(padded / (1 - padded))
-        log_dets = tf.log(1 / padded + 1 / (1 - padded))
+        log_dets = tf.log(1 / padded + 1 / (1 - padded)) + tf.log((1 - self.alpha))
         return logits, (), tf.reduce_sum(log_dets)
 
     def inverse(self, outputs, latents):
