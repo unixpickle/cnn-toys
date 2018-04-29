@@ -2,10 +2,14 @@
 Tests for real NVP layers.
 """
 
+from functools import partial
+
 import numpy as np
+import pytest
 import tensorflow as tf
 
-from .layer import Squeeze
+from .layer import (FactorHalf, MaskedConv, Network, PaddedLogit, Squeeze,
+                    checkerboard_mask, depth_mask)
 
 def test_squeeze_forward():
     """
@@ -30,12 +34,35 @@ def test_squeeze_forward():
         assert not np.isnan(actual).any()
         assert np.allclose(actual, expected)
 
-def test_squeeze_inverse():
+def test_padded_logit_inverse():
     """
-    Test the inverse of the Squeeze layer.
+    A specialized test for PaddedLogit inverses.
     """
-    inputs = np.random.normal(size=(3, 28, 14, 7)).astype('float32')
-    with tf.Session() as sess:
-        actual = sess.run(Squeeze().inverse(*Squeeze().forward(tf.constant(inputs))[:2]))
-        assert not np.isnan(actual).any()
-        assert np.allclose(actual, inputs)
+    inputs = np.random.random(size=(1, 3, 3, 7)).astype('float32') * 0.95
+    _inverse_test(PaddedLogit(), inputs)
+
+@pytest.mark.parametrize("layer,shape",
+                         [(FactorHalf(), (3, 27, 15, 8)),
+                          (MaskedConv(partial(checkerboard_mask, True), 3), (3, 28, 14, 8)),
+                          (MaskedConv(partial(depth_mask, False), 3), (3, 28, 14, 8)),
+                          (Network([FactorHalf(), Squeeze()]), (3, 28, 14, 4)),
+                          (Squeeze(), (4, 8, 18, 4))])
+def test_inverses(layer, shape):
+    """
+    Tests for inverses on unbounded inputs.
+    """
+    inputs = np.random.normal(size=shape).astype('float32')
+    _inverse_test(layer, inputs)
+
+def _inverse_test(layer, inputs):
+    with tf.Graph().as_default():
+        with tf.Session() as sess:
+            in_constant = tf.constant(inputs)
+            with tf.variable_scope('model'):
+                out, latent, _ = layer.forward(in_constant)
+            with tf.variable_scope('model', reuse=True):
+                inverse = layer.inverse(out, latent)
+            sess.run(tf.global_variables_initializer())
+            actual = sess.run(inverse)
+            assert not np.isnan(actual).any()
+            assert np.allclose(actual, inputs, atol=1e-4, rtol=1e-4)
