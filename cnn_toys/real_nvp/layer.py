@@ -125,7 +125,6 @@ class FactorHalf(NVPLayer):
         # Trick to undo the alternating split.
         expanded_1 = tf.expand_dims(outputs, axis=-1)
         expanded_2 = tf.expand_dims(latents[0], axis=-1)
-        print(expanded_1, expanded_2)
         concatenated = tf.concat([expanded_1, expanded_2], axis=-1)
         new_shape = [tf.shape(outputs)[0]] + [x.value for x in outputs.get_shape()[1:]]
         new_shape[-1] *= 2
