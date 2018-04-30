@@ -1,28 +1,17 @@
 """Sample a real NVP model."""
 
 import argparse
-from functools import partial
 
 import tensorflow as tf
 
-import cnn_toys.real_nvp as nvp
+from cnn_toys.real_nvp import simple_network
 from cnn_toys.graphics import save_image_grid
 from cnn_toys.saving import restore_state
 
 def main(args):
     """Sampling entry-point."""
     print('setting up model...')
-    main_layers = [
-        nvp.MaskedConv(partial(nvp.checkerboard_mask, True), 3),
-        nvp.MaskedConv(partial(nvp.checkerboard_mask, False), 3),
-        nvp.MaskedConv(partial(nvp.checkerboard_mask, True), 3),
-        nvp.Squeeze(),
-        nvp.MaskedConv(partial(nvp.depth_mask, True), 3),
-        nvp.MaskedConv(partial(nvp.depth_mask, False), 3),
-        nvp.MaskedConv(partial(nvp.depth_mask, True), 3),
-        nvp.FactorHalf()
-    ]
-    network = nvp.Network([nvp.PaddedLogit()] + (main_layers * 3))
+    network = simple_network()
     with tf.variable_scope('model'):
         fake_batch = tf.zeros((args.rows * args.cols, args.size, args.size, 3), dtype=tf.float32)
         _, latents, _ = network.forward(fake_batch)

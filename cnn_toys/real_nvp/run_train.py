@@ -1,12 +1,11 @@
 """Train a real NVP model."""
 
 import argparse
-from functools import partial
 from itertools import count
 
 import tensorflow as tf
 
-import cnn_toys.real_nvp as nvp
+from cnn_toys.real_nvp import log_likelihood, simple_network
 from cnn_toys.data import dir_dataset
 from cnn_toys.saving import save_state, restore_state
 
@@ -17,19 +16,9 @@ def main(args):
     images = dataset.repeat().batch(args.batch).make_one_shot_iterator().get_next()
     images = images + tf.random_uniform(tf.shape(images), maxval=0.01)
     print('setting up model...')
-    main_layers = [
-        nvp.MaskedConv(partial(nvp.checkerboard_mask, True), 3),
-        nvp.MaskedConv(partial(nvp.checkerboard_mask, False), 3),
-        nvp.MaskedConv(partial(nvp.checkerboard_mask, True), 3),
-        nvp.Squeeze(),
-        nvp.MaskedConv(partial(nvp.depth_mask, True), 3),
-        nvp.MaskedConv(partial(nvp.depth_mask, False), 3),
-        nvp.MaskedConv(partial(nvp.depth_mask, True), 3),
-        nvp.FactorHalf()
-    ]
-    network = nvp.Network([nvp.PaddedLogit()] + (main_layers * 3))
+    network = simple_network()
     with tf.variable_scope('model'):
-        loss = -tf.reduce_mean(nvp.log_likelihood(network, images))
+        loss = -tf.reduce_mean(log_likelihood(network, images))
     optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(loss)
     with tf.Session() as sess:
         print('initializing variables...')
