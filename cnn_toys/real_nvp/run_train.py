@@ -15,6 +15,7 @@ def main(args):
     print('loading dataset...')
     dataset = dir_dataset(args.data_dir, args.size)
     images = dataset.repeat().batch(args.batch).make_one_shot_iterator().get_next()
+    images = images + tf.random_uniform(images.get_shape(), maxval=0.01)
     print('setting up model...')
     main_layers = [
         nvp.MaskedConv(partial(nvp.checkerboard_mask, True), 3),
