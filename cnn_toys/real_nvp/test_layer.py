@@ -43,8 +43,8 @@ def test_padded_logit_inverse():
 
 @pytest.mark.parametrize("layer,shape",
                          [(FactorHalf(), (3, 27, 15, 8)),
-                          (MaskedConv(partial(checkerboard_mask, True), 3), (3, 28, 14, 8)),
-                          (MaskedConv(partial(depth_mask, False), 3), (3, 28, 14, 8)),
+                          (MaskedConv(partial(checkerboard_mask, True), 1), (3, 28, 14, 8)),
+                          (MaskedConv(partial(depth_mask, False), 1), (3, 28, 14, 8)),
                           (Network([FactorHalf(), Squeeze()]), (3, 28, 14, 4)),
                           (Squeeze(), (4, 8, 18, 4))])
 def test_inverses(layer, shape):

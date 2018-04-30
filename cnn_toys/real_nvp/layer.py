@@ -165,17 +165,21 @@ class MaskedConv(NVPLayer):
     """
     A masked convolution NVP transformation.
     """
-    def __init__(self, mask_fn, kernel_size, **conv_kwargs):
+    def __init__(self, mask_fn, num_residual, num_features=32, kernel_size=3, **conv_kwargs):
         """
         Create a masked convolution layer.
 
         Args:
           mask_fn: a function which takes a Tensor and
             produces a boolean mask Tensor.
+          num_residual: the number of residual blocks.
+          num_features: the number of latent features.
           kernel_size: the convolutional kernel size.
           conv_kwargs: other arguments for conv2d().
         """
         self.mask_fn = mask_fn
+        self.num_residual = num_residual
+        self.num_features = num_features
         self.kernel_size = kernel_size
         self.conv_kwargs = conv_kwargs
 
@@ -196,21 +200,28 @@ class MaskedConv(NVPLayer):
         mask = self.mask_fn(inputs)
         depth = inputs.get_shape()[3].value
         masked = tf.where(mask, inputs, tf.zeros_like(inputs))
-        def _residual_block():
-            output = tf.layers.conv2d(masked, depth, self.kernel_size, padding='same',
+        latent = tf.layers.conv2d(masked, self.num_features, 1)
+        for _ in range(self.num_residual):
+            latent = self._residual_block(tf.nn.relu(latent))
+        with tf.variable_scope(None, default_name='mask_biases'):
+            bias_params = tf.layers.conv2d(latent, depth, 1)
+            biases = tf.where(mask, tf.zeros_like(inputs), bias_params)
+        with tf.variable_scope(None, default_name='mask_scales'):
+            scale_params = tf.layers.conv2d(latent, depth, 1)
+            log_scales = tf.where(mask,
+                                  tf.zeros_like(inputs),
+                                  tf.tanh(scale_params) * self._get_tanh_scale(inputs))
+        return biases, log_scales
+
+    def _residual_block(self, inputs):
+        with tf.variable_scope(None, default_name='residual'):
+            output = tf.layers.conv2d(inputs, self.num_features, self.kernel_size, padding='same',
                                       **self.conv_kwargs)
             output = tf.nn.relu(tf.layers.batch_normalization(output, training=True))
-            output = tf.layers.conv2d(masked, depth, self.kernel_size, padding='same',
+            output = tf.layers.conv2d(output, self.num_features, self.kernel_size, padding='same',
                                       **self.conv_kwargs)
             output = tf.layers.batch_normalization(output, training=True)
-            return output + masked
-        bias_params = _residual_block()
-        scale_params = _residual_block()
-        biases = tf.where(mask, tf.zeros_like(inputs), bias_params)
-        log_scales = tf.where(mask,
-                              tf.zeros_like(inputs),
-                              tf.tanh(scale_params) * self._get_tanh_scale(inputs))
-        return biases, log_scales
+            return output + inputs
 
     @staticmethod
     def _get_tanh_scale(in_out):
