@@ -195,7 +195,7 @@ class MaskedConv(NVPLayer):
             output = tf.layers.conv2d(masked, depth, self.kernel_size, padding='same',
                                       **self.conv_kwargs)
             output = tf.nn.relu(tf.layers.batch_normalization(output, training=True))
-            output = tf.layers.conv2d(masked, depth * 2, self.kernel_size, padding='same',
+            output = tf.layers.conv2d(masked, depth, self.kernel_size, padding='same',
                                       **self.conv_kwargs)
             output = tf.layers.batch_normalization(output, training=True)
             output = tf.nn.relu(output + masked)
