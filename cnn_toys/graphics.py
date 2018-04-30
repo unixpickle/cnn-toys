@@ -16,6 +16,7 @@ def save_image_grid(grid, out_file, padding=10):
       out_file: the path where the file should be saved.
       padding: pixels of space to put around each image.
     """
+    grid = np.clip(grid, 0, 1)
     num_rows = grid.shape[0]
     num_cols = grid.shape[1]
     img_height = grid.shape[2]
