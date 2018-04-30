@@ -191,15 +191,17 @@ class MaskedConv(NVPLayer):
         mask = self.mask_fn(inputs)
         depth = inputs.get_shape()[3].value
         masked = tf.where(mask, inputs, tf.zeros_like(inputs))
-        output = tf.layers.conv2d(masked, depth * 2, self.kernel_size, padding='same',
-                                  **self.conv_kwargs)
-        output = tf.nn.relu(tf.layers.batch_normalization(output, training=True))
-        output = tf.layers.conv2d(masked, depth * 2, self.kernel_size, padding='same',
-                                  **self.conv_kwargs)
-        output = tf.layers.batch_normalization(output, training=True)
-        output = tf.nn.relu(output + masked)
-        bias_params = output[..., :depth]
-        scale_params = output[..., depth:]
+        def _residual_block():
+            output = tf.layers.conv2d(masked, depth, self.kernel_size, padding='same',
+                                      **self.conv_kwargs)
+            output = tf.nn.relu(tf.layers.batch_normalization(output, training=True))
+            output = tf.layers.conv2d(masked, depth * 2, self.kernel_size, padding='same',
+                                      **self.conv_kwargs)
+            output = tf.layers.batch_normalization(output, training=True)
+            output = tf.nn.relu(output + masked)
+            return output
+        bias_params = _residual_block()
+        scale_params = _residual_block()
         biases = tf.where(mask, tf.zeros_like(inputs), bias_params)
         log_scales = tf.where(mask,
                               tf.zeros_like(inputs),
