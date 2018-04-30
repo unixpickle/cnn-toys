@@ -67,8 +67,9 @@ class Network(NVPLayer):
         latents = []
         outputs = inputs
         log_det = tf.zeros(shape=[tf.shape(inputs)[0]], dtype=inputs.dtype)
-        for layer in self.layers:
-            outputs, sub_latents, sub_log_det = layer.forward(outputs)
+        for i, layer in enumerate(self.layers):
+            with tf.variable_scope('layer_%d' % i):
+                outputs, sub_latents, sub_log_det = layer.forward(outputs)
             latents.extend(sub_latents)
             log_det = log_det + sub_log_det
         latents.append(outputs)
@@ -79,13 +80,14 @@ class Network(NVPLayer):
         assert len(latents) == self.num_latents
         inputs = latents[-1]
         latents = latents[:-1]
-        for layer in self.layers[::-1]:
+        for i, layer in list(enumerate(self.layers))[::-1]:
             if layer.num_latents > 0:
                 sub_latents = latents[-layer.num_latents:]
                 latents = latents[:-layer.num_latents]
             else:
                 sub_latents = ()
-            inputs = layer.inverse(inputs, sub_latents)
+            with tf.variable_scope('layer_%d' % i):
+                inputs = layer.inverse(inputs, sub_latents)
         return inputs
 
 class PaddedLogit(NVPLayer):
