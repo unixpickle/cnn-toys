@@ -198,8 +198,7 @@ class MaskedConv(NVPLayer):
             output = tf.layers.conv2d(masked, depth, self.kernel_size, padding='same',
                                       **self.conv_kwargs)
             output = tf.layers.batch_normalization(output, training=True)
-            output = tf.nn.relu(output + masked)
-            return output
+            return output + masked
         bias_params = _residual_block()
         scale_params = _residual_block()
         biases = tf.where(mask, tf.zeros_like(inputs), bias_params)
