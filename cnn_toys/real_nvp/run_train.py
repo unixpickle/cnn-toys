@@ -14,7 +14,6 @@ def main(args):
     print('loading dataset...')
     dataset = dir_dataset(args.data_dir, args.size)
     images = dataset.repeat().batch(args.batch).make_one_shot_iterator().get_next()
-    images = images + tf.random_uniform(tf.shape(images), maxval=0.01)
     print('setting up model...')
     network = simple_network()
     with tf.variable_scope('model'):
