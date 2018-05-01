@@ -229,7 +229,7 @@ class MaskedConv(NVPLayer):
             return tf.get_variable('tanh_scale',
                                    shape=[x.value for x in in_out.get_shape()[1:]],
                                    dtype=in_out.dtype,
-                                   initializer=tf.ones_initializer())
+                                   initializer=tf.zeros_initializer())
 
 def checkerboard_mask(is_even, tensor):
     """
