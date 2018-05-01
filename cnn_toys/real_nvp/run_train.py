@@ -5,7 +5,7 @@ from itertools import count
 
 import tensorflow as tf
 
-from cnn_toys.real_nvp import log_likelihood, simple_network
+from cnn_toys.real_nvp import bits_per_pixel, simple_network
 from cnn_toys.data import dir_dataset
 from cnn_toys.saving import save_state, restore_state
 
@@ -18,7 +18,7 @@ def main(args):
     print('setting up model...')
     network = simple_network()
     with tf.variable_scope('model'):
-        loss = -tf.reduce_mean(log_likelihood(network, images))
+        loss = tf.reduce_mean(bits_per_pixel(network, images))
     optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(loss)
     with tf.Session() as sess:
         print('initializing variables...')
