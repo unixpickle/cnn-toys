@@ -10,13 +10,15 @@ from cnn_toys.saving import restore_state
 
 def main(args):
     """Sampling entry-point."""
+    if args.seed:
+        tf.set_random_seed(args.seed)
     print('setting up model...')
     network = simple_network()
     with tf.variable_scope('model'):
         fake_batch = tf.zeros((args.rows * args.cols, args.size, args.size, 3), dtype=tf.float32)
         _, latents, _ = network.forward(fake_batch)
     with tf.variable_scope('model', reuse=True):
-        gauss_latents = [tf.random_normal(latent.shape) for latent in latents]
+        gauss_latents = [tf.random_normal(latent.shape, seed=args.seed) for latent in latents]
         images = network.inverse(None, gauss_latents)
     with tf.Session() as sess:
         print('initializing variables...')
@@ -34,6 +36,7 @@ def _parse_args():
     parser.add_argument('--cols', help='columns in output', type=int, default=4)
     parser.add_argument('--state-file', help='state output file', default='state.pkl')
     parser.add_argument('--out-file', help='image output file', default='samples.png')
+    parser.add_argument('--seed', help='seed for outputs', type=int, default=None)
     return parser.parse_args()
 
 if __name__ == '__main__':
