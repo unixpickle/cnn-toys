@@ -52,6 +52,14 @@ class NVPLayer(ABC):
         """
         pass
 
+    def test_feed_dict(self):
+        """
+        Get a feed_dict to pass to TensorFlow when testing
+        the model. Typically, this will tell BatchNorm to
+        use pre-computed statistics.
+        """
+        return {}
+
 class Network(NVPLayer):
     """
     A feed-forward composition of NVP layers.
@@ -89,6 +97,11 @@ class Network(NVPLayer):
             with tf.variable_scope('layer_%d' % i):
                 inputs = layer.inverse(inputs, sub_latents)
         return inputs
+
+    def test_feed_dict(self):
+        res = {}
+        for layer in self.layers:
+            res.update(layer.test_feed_dict())
 
 class PaddedLogit(NVPLayer):
     """
@@ -182,6 +195,7 @@ class MaskedConv(NVPLayer):
         self.num_features = num_features
         self.kernel_size = kernel_size
         self.conv_kwargs = conv_kwargs
+        self._training = tf.constant(True)
 
     def forward(self, inputs):
         biases, log_scales = self._apply_masked(inputs)
@@ -192,6 +206,9 @@ class MaskedConv(NVPLayer):
         assert latents == ()
         biases, log_scales = self._apply_masked(outputs)
         return (outputs - biases) * tf.exp(-log_scales)
+
+    def test_feed_dict(self):
+        return {self._training: False}
 
     def _apply_masked(self, inputs):
         """
@@ -217,11 +234,14 @@ class MaskedConv(NVPLayer):
         with tf.variable_scope(None, default_name='residual'):
             output = tf.layers.conv2d(inputs, self.num_features, self.kernel_size, padding='same',
                                       **self.conv_kwargs)
-            output = tf.nn.relu(tf.layers.batch_normalization(output, training=True))
+            output = tf.nn.relu(self._batch_norm(output))
             output = tf.layers.conv2d(output, self.num_features, self.kernel_size, padding='same',
                                       **self.conv_kwargs)
-            output = tf.layers.batch_normalization(output, training=True)
+            output = self._batch_norm(output)
             return output + inputs
+
+    def _batch_norm(self, values):
+        return tf.layers.batch_normalization(values, training=self._training)
 
     @staticmethod
     def _get_tanh_scale(in_out):

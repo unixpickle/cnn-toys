@@ -26,7 +26,8 @@ def main(args):
         print('attempting to restore model...')
         restore_state(sess, args.state_file)
         print('generating samples...')
-        samples = sess.run(tf.reshape(images, [args.rows, args.cols, args.size, args.size, 3]))
+        samples = sess.run(tf.reshape(images, [args.rows, args.cols, args.size, args.size, 3]),
+                           feed_dict=network.test_feed_dict())
         save_image_grid(samples, args.out_file)
 
 def _parse_args():
