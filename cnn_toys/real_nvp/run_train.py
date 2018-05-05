@@ -31,7 +31,7 @@ def main(args):
         for i in count():
             cur_loss, _ = sess.run((train_loss, optimize))
             if i % args.val_interval:
-                val_loss = sess.run(val_images, feed_dict=network.test_feed_dict())
+                val_loss = sess.run(val_loss, feed_dict=network.test_feed_dict())
                 print('step %d: loss=%f val=%f' % (i, cur_loss, val_loss))
             else:
                 print('step %d: loss=%f' % (i, cur_loss))
