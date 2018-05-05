@@ -6,19 +6,22 @@ from itertools import count
 import tensorflow as tf
 
 from cnn_toys.real_nvp import bits_per_pixel, simple_network
-from cnn_toys.data import dir_dataset
+from cnn_toys.data import dir_train_val
 from cnn_toys.saving import save_state, restore_state
 
 def main(args):
     """The main training loop."""
     print('loading dataset...')
-    dataset = dir_dataset(args.data_dir, args.size)
-    images = dataset.repeat().batch(args.batch).make_one_shot_iterator().get_next()
+    train_data, val_data = dir_train_val(args.data_dir, args.size)
+    train_images = train_data.repeat().batch(args.batch).make_one_shot_iterator().get_next()
+    val_images = val_data.repeat().batch(args.batch).make_one_shot_iterator().get_next()
     print('setting up model...')
     network = simple_network()
     with tf.variable_scope('model'):
-        loss = tf.reduce_mean(bits_per_pixel(network, images))
-    optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(loss)
+        train_loss = tf.reduce_mean(bits_per_pixel(network, train_images))
+    with tf.variable_scope('model', reuse=True):
+        val_loss = tf.reduce_mean(bits_per_pixel(network, val_images))
+    optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(train_loss)
     with tf.Session() as sess:
         print('initializing variables...')
         sess.run(tf.global_variables_initializer())
@@ -26,8 +29,12 @@ def main(args):
         restore_state(sess, args.state_file)
         print('training...')
         for i in count():
-            cur_loss, _ = sess.run((loss, optimize))
-            print('step %d: loss=%f' % (i, cur_loss))
+            cur_loss, _ = sess.run((train_loss, optimize))
+            if i % args.val_interval:
+                val_loss = sess.run(val_images, feed_dict=network.test_feed_dict())
+                print('step %d: loss=%f val=%f' % (i, cur_loss, val_loss))
+            else:
+                print('step %d: loss=%f' % (i, cur_loss))
             if i % args.save_interval == 0:
                 save_state(sess, args.state_file)
 
@@ -39,6 +46,7 @@ def _parse_args():
     parser.add_argument('--step-size', help='training step size', type=float, default=2e-4)
     parser.add_argument('--state-file', help='state output file', default='state.pkl')
     parser.add_argument('--save-interval', help='iterations per save', type=int, default=100)
+    parser.add_argument('--val-interval', help='iterations per validation', type=int, default=10)
     return parser.parse_args()
 
 if __name__ == '__main__':
