@@ -5,8 +5,8 @@ from itertools import count
 
 import tensorflow as tf
 
-from cnn_toys.real_nvp import bits_per_pixel, simple_network
 from cnn_toys.data import dir_train_val
+from cnn_toys.real_nvp import bits_per_pixel, simple_network
 from cnn_toys.saving import save_state, restore_state
 
 def main(args):

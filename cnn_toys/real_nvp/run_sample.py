@@ -4,8 +4,8 @@ import argparse
 
 import tensorflow as tf
 
-from cnn_toys.real_nvp import simple_network
 from cnn_toys.graphics import save_image_grid
+from cnn_toys.real_nvp import simple_network
 from cnn_toys.saving import restore_state
 
 def main(args):
