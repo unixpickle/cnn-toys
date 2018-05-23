@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from .layer import sum_batch
 
+
 def log_likelihood(layer, inputs):
     """
     Compute the log likelihood for each input in a batch,
@@ -16,6 +17,7 @@ def log_likelihood(layer, inputs):
     for latent in latents:
         log_probs = log_probs + gaussian_log_prob(latent)
     return log_probs
+
 
 def gaussian_log_prob(tensor):
     """

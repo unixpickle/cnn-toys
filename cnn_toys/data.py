@@ -7,6 +7,7 @@ import os
 
 import tensorflow as tf
 
+
 def dir_train_val(image_dir, size, bigger_size=None):
     """
     Create a training and validation Dataset by reading
@@ -27,6 +28,7 @@ def dir_train_val(image_dir, size, bigger_size=None):
     return (images_dataset(train_paths, size, bigger_size=bigger_size),
             images_dataset(val_paths, size, bigger_size=bigger_size))
 
+
 def dir_dataset(image_dir, size, bigger_size=None):
     """Create a Dataset of images from a directory."""
     paths = []
@@ -34,6 +36,7 @@ def dir_dataset(image_dir, size, bigger_size=None):
         if not name.startswith('.'):
             paths.append(os.path.join(image_dir, name))
     return images_dataset(paths, size, bigger_size=bigger_size)
+
 
 def images_dataset(paths, size, bigger_size=None):
     """
@@ -46,6 +49,7 @@ def images_dataset(paths, size, bigger_size=None):
         this size before being randomly cropped to size.
     """
     paths_ds = tf.data.Dataset.from_tensor_slices(paths)
+
     def _read_image(path_tensor):
         data_tensor = tf.read_file(path_tensor)
         image_tensor = tf.image.decode_image(data_tensor, channels=3)
@@ -56,6 +60,7 @@ def images_dataset(paths, size, bigger_size=None):
         small = tf.random_crop(big, [size, size, 3])
         return tf.cast(small, tf.float32) / 0xff
     return paths_ds.shuffle(buffer_size=len(paths)).map(_read_image)
+
 
 def _use_for_val(path):
     return md5(bytes(path, 'utf-8')).digest()[0] < 0x80

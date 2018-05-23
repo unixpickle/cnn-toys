@@ -9,6 +9,7 @@ from cnn_toys.real_nvp import log_likelihood, simple_network
 from cnn_toys.data import dir_dataset
 from cnn_toys.saving import save_state, restore_state
 
+
 def main(args):
     """The main training loop."""
     print('loading dataset...')
@@ -32,6 +33,7 @@ def main(args):
             if i % args.save_interval == 0:
                 save_state(sess, args.state_file)
 
+
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data-dir', help='data directory', default='data')
@@ -41,6 +43,7 @@ def _parse_args():
     parser.add_argument('--state-file', help='state output file', default='state.pkl')
     parser.add_argument('--save-interval', help='iterations per save', type=int, default=100)
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     main(_parse_args())

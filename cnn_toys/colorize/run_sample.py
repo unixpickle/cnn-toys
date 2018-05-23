@@ -10,6 +10,7 @@ from cnn_toys.data import dir_train_val
 from cnn_toys.graphics import save_image_grid
 from cnn_toys.saving import restore_state
 
+
 def main(args):
     """Sample a batch of colorized images."""
     _, val_set = dir_train_val(args.data_dir, args.size)
@@ -23,6 +24,7 @@ def main(args):
         rows = sess.run([images, tf.tile(grayscale, [1, 1, 1, 3]), colorized])
         save_image_grid(np.array(rows), 'images.png')
 
+
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data-dir', help='data directory', default='data')
@@ -30,6 +32,7 @@ def _parse_args():
     parser.add_argument('--batch', help='number of samples', type=int, default=16)
     parser.add_argument('--state-file', help='state input file', default='state.pkl')
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     main(_parse_args())

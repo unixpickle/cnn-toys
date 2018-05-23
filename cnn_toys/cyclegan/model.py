@@ -7,6 +7,8 @@ import tensorflow as tf
 from .history import history_image
 
 # pylint: disable=R0902,R0903
+
+
 class CycleGAN:
     """
     A CycleGAN model.
@@ -17,6 +19,7 @@ class CycleGAN:
     Unless otherwise stated, all pixels are assumed to
     range from [0, 1].
     """
+
     def __init__(self, real_x, real_y, buffer_size=50, cycle_weight=10):
         initializer = tf.truncated_normal_initializer(stddev=0.02)
         self.buffer_size = buffer_size
@@ -37,7 +40,7 @@ class CycleGAN:
         """Apply the generator to an image."""
         return standard_generator(image, self._num_residual())
 
-    def discriminator(self, images): # pylint: disable=R0201
+    def discriminator(self, images):  # pylint: disable=R0201
         """Apply the descriminator to a batch of images."""
         return standard_discriminator(images)
 
@@ -94,6 +97,7 @@ class CycleGAN:
             return 9
         return 6
 
+
 def standard_discriminator(images):
     """
     Apply the standard CycleGAN discriminator to a batch
@@ -113,6 +117,7 @@ def standard_discriminator(images):
         outputs = activation(instance_norm(outputs))
     return tf.layers.conv2d(outputs, 1, 1)
 
+
 def standard_generator(image, num_residual):
     """
     Apply the standard CycleGAN generator to an image.
@@ -123,7 +128,7 @@ def standard_generator(image, num_residual):
       num_residual: the number of residual layers. In the
         original paper, this varied by image size.
     """
-    activation = lambda x: tf.nn.relu(instance_norm(x))
+    def activation(x): return tf.nn.relu(instance_norm(x))
     output = 2 * image - 1
     output = reflection_pad(tf.expand_dims(output, 0), 7)
     output = tf.layers.conv2d(output, 32, 7, padding='valid', activation=activation, use_bias=False)
@@ -145,6 +150,7 @@ def standard_generator(image, num_residual):
     output = reflection_pad(output, 7)
     return tf.sigmoid(tf.layers.conv2d(output, 3, 7, padding='valid'))[0]
 
+
 def instance_norm(images, epsilon=1e-5, name='instance_norm'):
     """Apply instance normalization to the batch."""
     means = tf.reduce_mean(images, axis=[1, 2], keep_dims=True)
@@ -157,10 +163,12 @@ def instance_norm(images, epsilon=1e-5, name='instance_norm'):
                                  initializer=tf.ones_initializer())
         return results*scales + biases
 
+
 def reflection_pad(images, filter_size):
     """Perform reflection padding for a convolution."""
     num = filter_size // 2
     return tf.pad(images, [[0, 0], [num, num], [num, num], [0, 0]], mode='REFLECT')
+
 
 def _grad_dict(term, variables):
     grads = tf.gradients(term, variables)
@@ -170,6 +178,7 @@ def _grad_dict(term, variables):
             res[var] = grad
     return res
 
+
 def _add_grad_dicts(dict1, dict2):
     res = dict1.copy()
     for var, grad in dict2.items():
@@ -178,6 +187,7 @@ def _add_grad_dicts(dict1, dict2):
         else:
             res[var] = grad
     return res
+
 
 def _add_image_noise(image):
     return tf.clip_by_value(image + tf.random_normal(tf.shape(image), stddev=0.001), 0, 1)

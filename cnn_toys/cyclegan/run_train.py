@@ -12,6 +12,7 @@ from cnn_toys.graphics import save_image_grid
 from cnn_toys.saving import save_state, restore_state
 from cnn_toys.schedules import half_annealed_lr
 
+
 def main(args):
     """The main training loop."""
     print('loading datasets...')
@@ -42,6 +43,7 @@ def main(args):
                 _generate_samples(sess, args, model, step)
                 _generate_cycle_samples(sess, args, model, step)
 
+
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--data-dir-1', help='first data directory', default='data_1')
@@ -56,17 +58,21 @@ def _parse_args():
     parser.add_argument('--sample-count', help='number of samples to draw', type=int, default=16)
     return parser.parse_args()
 
+
 def _load_dataset(dir_path, size, bigger_size):
     dataset = dir_dataset(dir_path, size, bigger_size=bigger_size)
     return dataset.repeat().make_one_shot_iterator().get_next()
+
 
 def _generate_samples(sess, args, model, step):
     _generate_grid(sess, args, step, 'samples',
                    (model.real_x, model.gen_y, model.real_y, model.gen_x))
 
+
 def _generate_cycle_samples(sess, args, model, step):
     _generate_grid(sess, args, step, 'cycles',
                    (model.real_x, model.cycle_x, model.real_y, model.cycle_y))
+
 
 def _generate_grid(sess, args, step, filename, tensors):
     if not os.path.exists(args.sample_dir):
@@ -75,6 +81,7 @@ def _generate_grid(sess, args, step, filename, tensors):
     for _ in range(args.sample_count):
         grid.append(sess.run(tensors))
     save_image_grid(np.array(grid), os.path.join(args.sample_dir, '%s_%d.png' % (filename, step)))
+
 
 if __name__ == '__main__':
     main(_parse_args())

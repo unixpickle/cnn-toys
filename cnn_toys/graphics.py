@@ -5,6 +5,7 @@ Tools for creating graphics from CNN models.
 from PIL import Image
 import numpy as np
 
+
 def save_image_grid(grid, out_file, padding=10):
     """
     Save a grid of RGB images to a file.
@@ -29,7 +30,7 @@ def save_image_grid(grid, out_file, padding=10):
         for col, img in enumerate(row_imgs):
             row_start = row * img_height + (row + 1) * padding
             col_start = col * img_width + (col + 1) * padding
-            grid_img[row_start : row_start + img_height,
-                     col_start : col_start + img_width] = img
+            grid_img[row_start: row_start + img_height,
+                     col_start: col_start + img_width] = img
     img = Image.fromarray((grid_img * 0xff).astype('uint8'), 'RGB')
     img.save(out_file)

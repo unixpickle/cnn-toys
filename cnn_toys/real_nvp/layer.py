@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import tensorflow as tf
 
+
 class NVPLayer(ABC):
     """
     A layer in a real NVP model.
@@ -52,10 +53,12 @@ class NVPLayer(ABC):
         """
         pass
 
+
 class Network(NVPLayer):
     """
     A feed-forward composition of NVP layers.
     """
+
     def __init__(self, layers):
         self.layers = layers
 
@@ -90,10 +93,12 @@ class Network(NVPLayer):
                 inputs = layer.inverse(inputs, sub_latents)
         return inputs
 
+
 class PaddedLogit(NVPLayer):
     """
     An NVP layer that applies `logit(a + (1-2a)x)`.
     """
+
     def __init__(self, alpha=0.05):
         self.alpha = alpha
 
@@ -107,6 +112,7 @@ class PaddedLogit(NVPLayer):
         assert latents == ()
         sigmoids = tf.nn.sigmoid(outputs)
         return (sigmoids - self.alpha) / (1 - 2 * self.alpha)
+
 
 class FactorHalf(NVPLayer):
     """
@@ -130,10 +136,12 @@ class FactorHalf(NVPLayer):
         new_shape[-1] *= 2
         return tf.reshape(concatenated, new_shape)
 
+
 class Squeeze(NVPLayer):
     """
     A layer that squeezes 2x2x1 blocks into 1x1x4 blocks.
     """
+
     def forward(self, inputs):
         assert all([x.value % 2 == 0 for x in inputs.get_shape()[1:3]]), 'even shape required'
         conv_filter = self._permutation_filter(inputs.get_shape()[-1].value, inputs.dtype)
@@ -328,6 +336,7 @@ def depth_mask(is_even, tensor):
     one_dim = tf.tile(tf.constant(mask, dtype=tf.bool), [tensor.get_shape()[-1].value // 4])
     # Broadcast, since + doesn't work for booleans.
     return tf.logical_or(one_dim, tf.zeros(shape=tf.shape(tensor), dtype=tf.bool))
+
 
 def sum_batch(tensor):
     """

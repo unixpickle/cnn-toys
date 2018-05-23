@@ -7,6 +7,7 @@ from functools import partial
 from .layer import (FactorHalf, MaskedConv, Network, PaddedLogit, Squeeze,
                     checkerboard_mask, depth_mask)
 
+
 def simple_network():
     """
     A Network that is good for experimenting.

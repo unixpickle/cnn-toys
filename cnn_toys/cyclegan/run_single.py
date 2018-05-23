@@ -15,6 +15,7 @@ from cnn_toys.data import images_dataset
 from cnn_toys.graphics import save_image_grid
 from cnn_toys.saving import restore_state
 
+
 def main(args):
     """Load and use a model."""
     print('loading input image...')
@@ -32,6 +33,7 @@ def main(args):
         row = sess.run([model.gen_x, model.gen_y])
         save_image_grid(np.array([row]), args.out_file)
 
+
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--size', help='image size', type=int, default=256)
@@ -41,6 +43,7 @@ def _parse_args():
     parser.add_argument('in_file', help='path to input file')
     parser.add_argument('out_file', help='path to output file')
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     main(_parse_args())

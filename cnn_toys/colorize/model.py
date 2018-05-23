@@ -4,6 +4,7 @@ A model for image colorization.
 
 import tensorflow as tf
 
+
 def sample_loss(input_ph):
     """
     Generate a loss for converting a color image to
@@ -12,12 +13,13 @@ def sample_loss(input_ph):
     colorized = colorize(tf.reduce_mean(input_ph, axis=-1, keep_dims=True))
     return tf.reduce_mean(tf.abs(colorized - input_ph))
 
+
 def colorize(input_ph):
     """
     Apply a neural network to produce a colorized version
     of the input images.
     """
-    activation = lambda x: tf.nn.relu(tf.contrib.layers.layer_norm(x))
+    def activation(x): return tf.nn.relu(tf.contrib.layers.layer_norm(x))
     output = input_ph
     output = tf.pad(output, [[0, 0], [3, 3], [3, 3], [0, 0]], mode='REFLECT')
     output = tf.layers.conv2d(output, 32, 7, activation=tf.nn.relu)

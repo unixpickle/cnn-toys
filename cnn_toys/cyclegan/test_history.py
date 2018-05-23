@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from .history import history_image
 
+
 def test_history_image_append():
     """Test underfull image histories"""
     with tf.Graph().as_default():
@@ -16,6 +17,7 @@ def test_history_image_append():
             for _ in range(5):
                 in_arr, out_arr = sess.run((in_image, hist))
                 assert (in_arr == out_arr).all()
+
 
 def test_history_image_sample():
     """Test sampling from image histories"""
@@ -39,6 +41,7 @@ def test_history_image_sample():
                         history[i] = in_arr
                 assert found
                 sample_count += 1
+
 
 def test_history_image_single():
     """Test a buffer with one sample"""

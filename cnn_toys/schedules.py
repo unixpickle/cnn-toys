@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 
+
 def half_annealed_lr(initial, iters, global_step):
     """
     Create a learning rate that stays at an initial value

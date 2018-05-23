@@ -4,6 +4,7 @@ An in-graph image history buffer.
 
 import tensorflow as tf
 
+
 def history_image(image, buffer_size, name='image_buffer'):
     """
     Get an image from a history buffer and submit the
@@ -21,9 +22,11 @@ def history_image(image, buffer_size, name='image_buffer'):
         buf = tf.get_variable('images', shape=[buffer_size] + [x.value for x in image.get_shape()],
                               dtype=image.dtype, trainable=False)
         size = tf.get_variable('size', dtype=tf.int32, initializer=0, trainable=False)
+
         def _insert_new():
             insert_idx = tf.assign_add(size, 1) - 1
             return _assign_buf_entry(buf, insert_idx, image)
+
         def _sample_old():
             idx = tf.random_uniform((), maxval=buffer_size, dtype=tf.int32)
             # `+ 0` hack to deal with buffer_size == 1.
@@ -38,6 +41,7 @@ def history_image(image, buffer_size, name='image_buffer'):
                        lambda: tf.cond(tf.random_uniform(()) < 0.5,
                                        _sample_old,
                                        lambda: image))
+
 
 def _assign_buf_entry(buf, idx, image):
     pieces = [buf[:idx], tf.expand_dims(image, 0), buf[idx+1:]]

@@ -11,6 +11,7 @@ import tensorflow as tf
 from .layer import (FactorHalf, MaskedConv, Network, PaddedLogit, Squeeze,
                     checkerboard_mask, depth_mask)
 
+
 def test_squeeze_forward():
     """
     Test the forward pass of the Squeeze layer.
@@ -34,12 +35,14 @@ def test_squeeze_forward():
         assert not np.isnan(actual).any()
         assert np.allclose(actual, expected)
 
+
 def test_padded_logit_inverse():
     """
     A specialized test for PaddedLogit inverses.
     """
     inputs = np.random.random(size=(1, 3, 3, 7)).astype('float32') * 0.95
     _inverse_test(PaddedLogit(), inputs)
+
 
 @pytest.mark.parametrize("layer,shape",
                          [(FactorHalf(), (3, 27, 15, 8)),
@@ -53,6 +56,7 @@ def test_inverses(layer, shape):
     """
     inputs = np.random.normal(size=shape).astype('float32')
     _inverse_test(layer, inputs)
+
 
 def _inverse_test(layer, inputs):
     with tf.Graph().as_default():

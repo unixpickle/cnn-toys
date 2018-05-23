@@ -8,6 +8,7 @@ from cnn_toys.real_nvp import simple_network
 from cnn_toys.graphics import save_image_grid
 from cnn_toys.saving import restore_state
 
+
 def main(args):
     """Sampling entry-point."""
     print('setting up model...')
@@ -27,6 +28,7 @@ def main(args):
         samples = sess.run(tf.reshape(images, [args.rows, args.cols, args.size, args.size, 3]))
         save_image_grid(samples, args.out_file)
 
+
 def _parse_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--size', help='image size', type=int, default=64)
@@ -35,6 +37,7 @@ def _parse_args():
     parser.add_argument('--state-file', help='state output file', default='state.pkl')
     parser.add_argument('--out-file', help='image output file', default='samples.png')
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     main(_parse_args())
