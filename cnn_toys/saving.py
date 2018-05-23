@@ -20,5 +20,7 @@ def restore_state(sess, path):
         return
     with open(path, 'rb') as infile:
         state = pickle.load(infile)
-    for var, val in zip(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES), state):
-        sess.run(tf.assign(var, val))
+    all_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+    placeholders = [tf.placeholder(dtype=v.dtype.base_dtype, shape=v.get_shape()) for v in all_vars]
+    assigns = [tf.assign(var, ph) for var, ph in zip(all_vars, placeholders)]
+    sess.run(tf.group(*assigns), feed_dict=dict(zip(placeholders, state)))
