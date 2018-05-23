@@ -161,10 +161,36 @@ class Squeeze(NVPLayer):
                     res[row, col, i, 4 * i + row * 2 + col] = 1
         return tf.constant(res, dtype=dtype)
 
-class MaskedConv(NVPLayer):
+
+class MaskedLayer(NVPLayer):
+    """
+    An abstract NVP transformation that uses a masked
+    neural network.
+    """
+
+    def forward(self, inputs):
+        biases, log_scales = self._apply_masked(inputs)
+        log_det = sum_batch(log_scales)
+        return inputs * tf.exp(log_scales) + biases, (), log_det
+
+    def inverse(self, outputs, latents):
+        assert latents == ()
+        biases, log_scales = self._apply_masked(outputs)
+        return (outputs - biases) * tf.exp(-log_scales)
+
+    @abstractmethod
+    def _apply_masked(self, inputs):
+        """
+        Get (biases, log_scales) for the inputs.
+        """
+        pass
+
+
+class MaskedConv(MaskedLayer):
     """
     A masked convolution NVP transformation.
     """
+
     def __init__(self, mask_fn, num_residual, num_features=32, kernel_size=3, **conv_kwargs):
         """
         Create a masked convolution layer.
@@ -182,16 +208,6 @@ class MaskedConv(NVPLayer):
         self.num_features = num_features
         self.kernel_size = kernel_size
         self.conv_kwargs = conv_kwargs
-
-    def forward(self, inputs):
-        biases, log_scales = self._apply_masked(inputs)
-        log_det = sum_batch(log_scales)
-        return inputs * tf.exp(log_scales) + biases, (), log_det
-
-    def inverse(self, outputs, latents):
-        assert latents == ()
-        biases, log_scales = self._apply_masked(outputs)
-        return (outputs - biases) * tf.exp(-log_scales)
 
     def _apply_masked(self, inputs):
         """
@@ -231,6 +247,46 @@ class MaskedConv(NVPLayer):
                                    dtype=in_out.dtype,
                                    initializer=tf.zeros_initializer())
 
+
+class MaskedFC(MaskedLayer):
+    """
+    A fully-connected layer that scales certain dimensions
+    using information from other dimensions.
+    """
+
+    def __init__(self, mask_fn, num_features=64, num_layers=2):
+        """
+        Create a masked layer.
+
+        Args:
+          mask_fn: a function which takes a Tensor and
+            produces a boolean mask Tensor.
+          num_features: the number of hidden units.
+          num_layers: the number of hidden layers.
+        """
+        self.mask_fn = mask_fn
+        self.num_features = num_features
+        self.num_layers = num_layers
+
+    def _apply_masked(self, inputs):
+        """
+        Get (biases, log_scales) for the inputs.
+        """
+        depth = inputs.get_shape()[-1]
+        mask = self.mask_fn(inputs)
+
+        masked_in = tf.where(mask, inputs, tf.zeros_like(inputs))
+        out = tf.layers.dense(masked_in, self.num_features, activation=tf.nn.relu)
+        for _ in range(self.num_layers - 1):
+            out = tf.layers.dense(out, self.num_features, activation=tf.nn.relu)
+        log_scales = tf.layers.dense(out, depth, kernel_initializer=tf.zeros_initializer())
+        log_scales = tf.where(mask, tf.zeros_like(inputs), log_scales)
+        biases = tf.layers.dense(out, depth, kernel_initializer=tf.zeros_initializer())
+        biases = tf.where(mask, tf.zeros_like(inputs), biases)
+
+        return biases, log_scales
+
+
 def checkerboard_mask(is_even, tensor):
     """
     Create a checkerboard mask in the shape of a Tensor.
@@ -244,6 +300,17 @@ def checkerboard_mask(is_even, tensor):
         for col in range(result.shape[1]):
             result[row, col, :] = (((row + col) % 2 == 0) == is_even)
     return tf.tile(tf.expand_dims(result, axis=0), [tf.shape(tensor)[0], 1, 1, 1])
+
+
+def one_cold_mask(idx, tensor):
+    """
+    Create a mask that only masks out one channel in a 2-D
+    input Tensor.
+    """
+    result = np.ones([tensor.get_shape()[-1].value], dtype='bool')
+    result[idx] = False
+    return tf.tile(tf.expand_dims(result, axis=0), [tf.shape(tensor)[0], 1])
+
 
 def depth_mask(is_even, tensor):
     """
