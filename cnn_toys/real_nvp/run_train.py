@@ -22,7 +22,9 @@ def main(args):
         train_loss = tf.reduce_mean(bits_per_pixel(network, train_images))
     with tf.variable_scope('model', reuse=True):
         val_loss = tf.reduce_mean(bits_per_pixel(network, val_images))
-    optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(train_loss)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(train_loss)
     with tf.Session() as sess:
         print('initializing variables...')
         sess.run(tf.global_variables_initializer())
