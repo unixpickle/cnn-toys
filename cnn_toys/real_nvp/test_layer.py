@@ -66,7 +66,7 @@ def _inverse_test(layer, inputs):
                 out, latent, _ = layer.forward(in_constant)
             with tf.variable_scope('model', reuse=True):
                 inverse = layer.inverse(out, latent)
-            sess.run(tf.global_variables_initializer())
+            _randomized_init(sess)
             actual = sess.run(inverse)
             assert not np.isnan(actual).any()
             assert np.allclose(actual, inputs, atol=1e-4, rtol=1e-4)
@@ -103,15 +103,7 @@ def _log_det_test(layer, inputs):
             jacobian = _compute_jacobian(in_vecs, out_vecs)
             jacobians = tf.stack([jacobian], axis=0)
             real_log_det = tf.linalg.slogdet(jacobians)[1][0]
-
-            sess.run(tf.global_variables_initializer())
-            # Without a random init, some layers are
-            # essentially just identity transforms.
-            for variable in tf.trainable_variables():
-                shape = [x.value for x in variable.get_shape()]
-                val = tf.glorot_uniform_initializer()(shape)
-                sess.run(tf.assign(variable, val))
-
+            _randomized_init(sess)
             real_log_det, log_det = sess.run([real_log_det, log_det])
             assert log_det.shape == (1,)
             assert not np.isnan(log_det).any()
@@ -125,3 +117,18 @@ def _compute_jacobian(in_vecs, out_vecs):
     for comp in range(num_dims):
         res.append(tf.gradients(out_vecs[:, comp], in_vecs)[0][0])
     return tf.stack(res, axis=0)
+
+
+def _randomized_init(sess):
+    """
+    Initialize all the TF variables in a way that prevents
+    default identity behavior.
+
+    Without a random init, some layers are essentially
+    just identity transforms.
+    """
+    sess.run(tf.global_variables_initializer())
+    for variable in tf.trainable_variables():
+        shape = [x.value for x in variable.get_shape()]
+        val = tf.glorot_uniform_initializer()(shape)
+        sess.run(tf.assign(variable, val))
