@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-from .layer import (FactorHalf, MaskedConv, Network, PaddedLogit, Squeeze,
-                    checkerboard_mask, depth_mask)
+from .layer import (FactorHalf, MaskedConv, MaskedFC, Network, PaddedLogit, Squeeze,
+                    checkerboard_mask, depth_mask, one_cold_mask)
 
 
 def test_squeeze_forward():
@@ -48,6 +48,7 @@ def test_padded_logit_inverse():
                          [(FactorHalf(), (3, 27, 15, 8)),
                           (MaskedConv(partial(checkerboard_mask, True), 1), (3, 28, 14, 8)),
                           (MaskedConv(partial(depth_mask, False), 1), (3, 28, 14, 8)),
+                          (MaskedFC(partial(one_cold_mask, 3)), (3, 6)),
                           (Network([FactorHalf(), Squeeze()]), (3, 28, 14, 4)),
                           (Squeeze(), (4, 8, 18, 4))])
 def test_inverses(layer, shape):
@@ -82,7 +83,8 @@ def test_padded_logit_log_det():
 
 @pytest.mark.parametrize("layer,shape",
                          [(MaskedConv(partial(checkerboard_mask, True), 1), (1, 4, 6, 2)),
-                          (MaskedConv(partial(depth_mask, False), 1), (1, 4, 4, 8))])
+                          (MaskedConv(partial(depth_mask, False), 1), (1, 4, 4, 8)),
+                          (MaskedFC(partial(one_cold_mask, 3)), (1, 6))])
 def test_log_det(layer, shape):
     """
     Tests log determinants.
