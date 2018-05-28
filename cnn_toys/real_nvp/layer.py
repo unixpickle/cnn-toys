@@ -20,8 +20,29 @@ class NVPLayer(ABC):
         """
         return 0
 
+    def forward(self, inputs, name='layer', reuse=False):
+        """
+        Apply the layer to a batch of inputs.
+
+        Args:
+          inputs: an input batch for the layer.
+          name: the name of the variable scope.
+          reuse: the variable scope reuse flag.
+
+        Returns:
+          A tuple (outputs, latents, log_det):
+            outputs: the values to be passed to the next
+              layer of the network. May be None for the
+              last layer of the network.
+            latents: A tuple of factored out Tensors.
+              This may be an empty tuple.
+            log_det: a batch of log of the determinants.
+        """
+        with tf.variable_scope(name, reuse=reuse):
+            return self._forward(inputs)
+
     @abstractmethod
-    def forward(self, inputs):
+    def _forward(self, inputs):
         """
         Apply the layer to a batch of inputs.
 
@@ -39,10 +60,26 @@ class NVPLayer(ABC):
         """
         pass
 
-    @abstractmethod
-    def inverse(self, outputs, latents):
+    def inverse(self, outputs, latents, name='layer', reuse=False):
         """
-        Apply the inverse of the model.
+        Apply the inverse of the layer.
+
+        Args:
+          outputs: the outputs from the layer.
+          latents: the latent outputs from the layer.
+          name: the name of the variable scope.
+          reuse: the variable scope reuse flag.
+
+        Returns:
+          The recovered input batch for the layer.
+        """
+        with tf.variable_scope(name, reuse=reuse):
+            return self._inverse(outputs, latents)
+
+    @abstractmethod
+    def _inverse(self, outputs, latents):
+        """
+        Apply the inverse of the layer.
 
         Args:
           outputs: the outputs from the layer.
@@ -52,6 +89,95 @@ class NVPLayer(ABC):
           The recovered input batch for the layer.
         """
         pass
+
+    def backward(self, outputs, outputs_grad, latents, latents_grad, log_det_grad,
+                 var_list=None, name='layer', reuse=False):
+        """
+        Compute a gradient through the layer.
+
+        This is optimized for memory consumption.
+        Currently, it does not support 2nd derivatives.
+
+        Args:
+          outputs: the outputs of the layer. May be None.
+          outputs_grad: the gradient of the objective with
+            respect to the outputs. May be None.
+          latents: the latent outputs from the layer.
+          latents_grad: the gradient of the objective with
+            respect to the latents.
+          log_det_grad: the gradient of the objective with
+            respect to the log determinant.
+          var_list: the list of variables to differentiate
+            with respect to. If None, use all trainable
+            variables.
+          name: the name of the variable scope.
+          reuse: the variable scope reuse flag.
+
+        Returns:
+          A tuple (upstream, grads):
+            inputs: the recovered inputs to the layer.
+            upstream: a Tensor representing the gradient
+              of the objective with respect to the inputs
+              to the layer.
+            grads: a list of (gradient, variable) pairs
+              for the parameters of the layer.
+        """
+        inputs = tf.stop_gradient(self.inverse(outputs, latents, name=name, reuse=reuse))
+        new_outputs, new_latents, new_log_dets = self.forward(inputs,
+                                                              name=name,
+                                                              reuse=True)
+        objective = tf.reduce_sum(new_log_dets * tf.stop_gradient(log_det_grad))
+        if new_outputs is not None:
+            objective += tf.reduce_sum(new_outputs * tf.stop_gradient(outputs_grad))
+        for latent, latent_grad in zip(new_latents, latents_grad):
+            objective += tf.reduce_sum(latent * tf.stop_gradient(latent_grad))
+        input_grad = tf.gradients(objective, inputs)[0]
+        if input_grad is None:
+            input_grad = tf.Print(tf.zeros_like(input_grad), [],
+                                  message='WARNING: gradient does not flow to inputs',
+                                  first_n=1)
+        variables = var_list if var_list is not None else tf.trainable_variables()
+        var_grads = [x for x in zip(tf.gradients(objective, variables), variables)
+                     if x[0] is not None]
+        return inputs, input_grad, var_grads
+
+    def gradients(self, outputs, latents, log_det, loss, var_list=None, name='layer', reuse=True):
+        """
+        Perform backpropagation through the layer using
+        the backward() method.
+
+        This computes gradients without needing to store
+        intermediate Tensors from the forward pass.
+        Currently, it does not support 2nd derivatives.
+
+        Args:
+          outputs: the layer outputs.
+          latents: the layer's latent outputs.
+          log_det: the output log determinants.
+          loss: the loss value resulting from the latents
+            and log determinants.
+          var_list: the variables to find gradients for,
+            or None to use all trainable variables.
+          name: the name of the variable scope.
+          reuse: the variable scope reuse flag.
+
+        Returns:
+          A list of (gradient, variable) pairs.
+        """
+        assert len(latents) == self.num_latents
+        if outputs is not None:
+            outputs_grad = tf.gradients(loss, outputs)[0]
+            if outputs_grad is None:
+                outputs_grad = tf.zeros_like(outputs)
+        else:
+            outputs_grad = None
+        latents_grad = [grad if grad is not None else tf.zeros_like(latent)
+                        for grad, latent in zip(tf.gradients(loss, latents), latents)]
+        log_det_grad = tf.gradients(loss, log_det)[0]
+        if log_det_grad is None:
+            log_det_grad = tf.zeros_like(log_det)
+        return self.backward(outputs, outputs_grad, latents, latents_grad, log_det_grad,
+                             var_list=var_list, name=name, reuse=reuse)[2]
 
     def test_feed_dict(self):
         """
@@ -74,19 +200,18 @@ class Network(NVPLayer):
     def num_latents(self):
         return 1 + sum(l.num_latents for l in self.layers)
 
-    def forward(self, inputs):
+    def _forward(self, inputs):
         latents = []
         outputs = inputs
         log_det = tf.zeros(shape=[tf.shape(inputs)[0]], dtype=inputs.dtype)
         for i, layer in enumerate(self.layers):
-            with tf.variable_scope('layer_%d' % i):
-                outputs, sub_latents, sub_log_det = layer.forward(outputs)
+            outputs, sub_latents, sub_log_det = layer.forward(outputs, name='layer_%d' % i)
             latents.extend(sub_latents)
             log_det = log_det + sub_log_det
         latents.append(outputs)
         return None, tuple(latents), log_det
 
-    def inverse(self, outputs, latents):
+    def _inverse(self, outputs, latents):
         assert outputs is None
         assert len(latents) == self.num_latents
         inputs = latents[-1]
@@ -97,9 +222,41 @@ class Network(NVPLayer):
                 latents = latents[:-layer.num_latents]
             else:
                 sub_latents = ()
-            with tf.variable_scope('layer_%d' % i):
-                inputs = layer.inverse(inputs, sub_latents)
+            inputs = layer.inverse(inputs, sub_latents, name='layer_%d' % i)
         return inputs
+
+    def backward(self, outputs, outputs_grad, latents, latents_grad, log_det_grad,
+                 var_list=None, name='layer', reuse=False):
+        with tf.variable_scope(name, reuse=reuse):
+            assert outputs is None
+            assert outputs_grad is None
+            outputs = latents[-1]
+            outputs_grad = latents_grad[-1]
+            latents = latents[:-1]
+            latents_grad = latents_grad[:-1]
+            total_grads = {}
+            for i, layer in list(enumerate(self.layers))[::-1]:
+                if layer.num_latents > 0:
+                    sub_latents = latents[-layer.num_latents:]
+                    sub_latents_grad = latents_grad[-layer.num_latents:]
+                    latents = latents[:-layer.num_latents]
+                    latents_grad = latents_grad[:-layer.num_latents]
+                else:
+                    sub_latents = ()
+                    sub_latents_grad = ()
+                outputs, outputs_grad, vars_grad = layer.backward(outputs,
+                                                                  outputs_grad,
+                                                                  sub_latents,
+                                                                  sub_latents_grad,
+                                                                  log_det_grad,
+                                                                  var_list=var_list,
+                                                                  name='layer_%d' % i)
+                for grad, var in vars_grad:
+                    if var in total_grads:
+                        total_grads[var] += grad
+                    else:
+                        total_grads[var] = grad
+            return outputs, outputs_grad, [(grad, var) for var, grad in total_grads.items()]
 
     def test_feed_dict(self):
         res = {}
@@ -115,13 +272,13 @@ class PaddedLogit(NVPLayer):
     def __init__(self, alpha=0.05):
         self.alpha = alpha
 
-    def forward(self, inputs):
+    def _forward(self, inputs):
         padded = self.alpha + (1 - 2 * self.alpha) * inputs
         logits = tf.log(padded / (1 - padded))
         log_dets = tf.log(1 / padded + 1 / (1 - padded)) + tf.log((1 - 2 * self.alpha))
         return logits, (), sum_batch(log_dets)
 
-    def inverse(self, outputs, latents):
+    def _inverse(self, outputs, latents):
         assert latents == ()
         sigmoids = tf.nn.sigmoid(outputs)
         return (sigmoids - self.alpha) / (1 - 2 * self.alpha)
@@ -135,11 +292,11 @@ class FactorHalf(NVPLayer):
     def num_latents(self):
         return 1
 
-    def forward(self, inputs):
+    def _forward(self, inputs):
         return (inputs[..., ::2], (inputs[..., 1::2],),
                 tf.constant(0, dtype=inputs.dtype))
 
-    def inverse(self, outputs, latents):
+    def _inverse(self, outputs, latents):
         assert len(latents) == 1
         # Trick to undo the alternating split.
         expanded_1 = tf.expand_dims(outputs, axis=-1)
@@ -155,13 +312,13 @@ class Squeeze(NVPLayer):
     A layer that squeezes 2x2x1 blocks into 1x1x4 blocks.
     """
 
-    def forward(self, inputs):
+    def _forward(self, inputs):
         assert all([x.value % 2 == 0 for x in inputs.get_shape()[1:3]]), 'even shape required'
         conv_filter = self._permutation_filter(inputs.get_shape()[-1].value, inputs.dtype)
         return (tf.nn.conv2d(inputs, conv_filter, [1, 2, 2, 1], 'VALID'),
                 (), tf.constant(0, dtype=inputs.dtype))
 
-    def inverse(self, outputs, latents):
+    def _inverse(self, outputs, latents):
         assert latents == ()
         in_depth = outputs.get_shape()[-1].value // 4
         conv_filter = self._permutation_filter(in_depth, outputs.dtype)
@@ -189,12 +346,12 @@ class MaskedLayer(NVPLayer):
     neural network.
     """
 
-    def forward(self, inputs):
+    def _forward(self, inputs):
         biases, log_scales = self._apply_masked(inputs)
         log_det = sum_batch(log_scales)
         return inputs * tf.exp(log_scales) + biases, (), log_det
 
-    def inverse(self, outputs, latents):
+    def _inverse(self, outputs, latents):
         assert latents == ()
         biases, log_scales = self._apply_masked(outputs)
         return (outputs - biases) * tf.exp(-log_scales)

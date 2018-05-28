@@ -6,7 +6,7 @@ from itertools import count
 import tensorflow as tf
 
 from cnn_toys.data import dir_train_val
-from cnn_toys.real_nvp import bits_per_pixel, simple_network
+from cnn_toys.real_nvp import bits_per_pixel, bits_per_pixel_and_grad, simple_network
 from cnn_toys.saving import save_state, restore_state
 
 
@@ -19,12 +19,20 @@ def main(args):
     print('setting up model...')
     network = simple_network()
     with tf.variable_scope('model'):
-        train_loss = tf.reduce_mean(bits_per_pixel(network, train_images))
+        if args.low_mem:
+            bpp, train_gradients = bits_per_pixel_and_grad(network, train_images)
+            train_loss = tf.reduce_mean(bpp)
+        else:
+            train_loss = tf.reduce_mean(bits_per_pixel(network, train_images))
     with tf.variable_scope('model', reuse=True):
         val_loss = tf.reduce_mean(bits_per_pixel(network, val_images))
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-        optimize = tf.train.AdamOptimizer(learning_rate=args.step_size).minimize(train_loss)
+        optimizer = tf.train.AdamOptimizer(learning_rate=args.step_size)
+        if args.low_mem:
+            optimize = optimizer.apply_gradients(train_gradients)
+        else:
+            optimize = optimizer.minimize(train_loss)
     with tf.Session() as sess:
         print('initializing variables...')
         sess.run(tf.global_variables_initializer())
@@ -51,6 +59,7 @@ def _parse_args():
     parser.add_argument('--state-file', help='state output file', default='state.pkl')
     parser.add_argument('--save-interval', help='iterations per save', type=int, default=100)
     parser.add_argument('--val-interval', help='iterations per validation', type=int, default=10)
+    parser.add_argument('--low-mem', help='use memory-efficient backprop', action='store_true')
     return parser.parse_args()
 
 
