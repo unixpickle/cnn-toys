@@ -60,7 +60,7 @@ def test_inverses(layer, shape):
 
 
 def _inverse_test(layer, inputs):
-    with tf.Graph().as_default():
+    with tf.Graph().as_default():  # pylint: disable=E1129
         with tf.Session() as sess:
             in_constant = tf.constant(inputs)
             with tf.variable_scope('model'):
@@ -82,9 +82,9 @@ def test_padded_logit_log_det():
 
 
 @pytest.mark.parametrize("layer,shape",
-                         [(MaskedConv(partial(checkerboard_mask, True), 1), (1, 4, 6, 2)),
-                          (MaskedConv(partial(depth_mask, False), 1), (1, 4, 4, 8)),
-                          (MaskedFC(partial(one_cold_mask, 3)), (1, 6))])
+                         [(MaskedConv(partial(checkerboard_mask, True), 1), (3, 4, 6, 2)),
+                          (MaskedConv(partial(depth_mask, False), 1), (3, 4, 4, 8)),
+                          (MaskedFC(partial(one_cold_mask, 3)), (3, 6))])
 def test_log_det(layer, shape):
     """
     Tests log determinants.
@@ -94,30 +94,31 @@ def test_log_det(layer, shape):
 
 
 def _log_det_test(layer, inputs):
-    assert len(inputs) == 1, 'only works with batch-size 1'
-    with tf.Graph().as_default():
+    with tf.Graph().as_default():  # pylint: disable=E1129
         with tf.Session() as sess:
             in_vecs = tf.constant(np.reshape(inputs, [inputs.shape[0], -1]))
             in_tensor = tf.reshape(in_vecs, inputs.shape)
             with tf.variable_scope('model'):
-                out, _, log_det = layer.forward(in_tensor)
+                out, _, log_dets = layer.forward(in_tensor)
                 out_vecs = tf.reshape(out, in_vecs.get_shape())
-            jacobian = _compute_jacobian(in_vecs, out_vecs)
-            jacobians = tf.stack([jacobian], axis=0)
-            real_log_det = tf.linalg.slogdet(jacobians)[1][0]
+            jacobians = _compute_jacobians(in_vecs, out_vecs)
+            real_log_dets = tf.linalg.slogdet(jacobians)[1]
             _randomized_init(sess)
-            real_log_det, log_det = sess.run([real_log_det, log_det])
-            assert log_det.shape == (1,)
-            assert not np.isnan(log_det).any()
-            assert not np.isnan(real_log_det).any()
-            assert np.allclose(real_log_det, log_det[0], atol=1e-4, rtol=1e-4)
+            real_log_dets, log_dets = sess.run([real_log_dets, log_dets])
+            assert log_dets.shape == (inputs.shape[0],)
+            assert not np.isnan(log_dets).any()
+            assert not np.isnan(real_log_dets).any()
+            assert np.allclose(real_log_dets, log_dets, atol=1e-4, rtol=1e-4)
 
 
-def _compute_jacobian(in_vecs, out_vecs):
+def _compute_jacobians(in_vecs, out_vecs):
     num_dims = in_vecs.get_shape()[-1].value
     res = []
-    for comp in range(num_dims):
-        res.append(tf.gradients(out_vecs[:, comp], in_vecs)[0][0])
+    for i in range(in_vecs.get_shape()[0].value):
+        rows = []
+        for comp in range(num_dims):
+            rows.append(tf.gradients(out_vecs[i, comp], in_vecs)[0][i])
+        res.append(tf.stack(rows, axis=0))
     return tf.stack(res, axis=0)
 
 
