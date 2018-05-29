@@ -11,6 +11,10 @@ import tensorflow as tf
 class NVPLayer(ABC):
     """
     A layer in a real NVP model.
+
+    Subclasses must override _forward() and _inverse().
+    Subclasses may also override test_feed_dict() and
+    num_latents() if appropriate.
     """
     @property
     def num_latents(self):
