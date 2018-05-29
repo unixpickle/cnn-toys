@@ -3,6 +3,7 @@ Tests for real NVP layers.
 """
 
 from functools import partial
+from random import random
 
 import numpy as np
 import pytest
@@ -34,6 +35,40 @@ def test_squeeze_forward():
         ], dtype='float32')
         assert not np.isnan(actual).any()
         assert np.allclose(actual, expected)
+
+
+def test_gradients():
+    """
+    Test that manual gradient computation works properly.
+    """
+    with tf.Graph().as_default():  # pylint: disable=E1129
+        layers = [
+            PaddedLogit(),
+            MaskedConv(partial(checkerboard_mask, True), 2),
+            MaskedConv(partial(checkerboard_mask, False), 2),
+            Squeeze(),
+            MaskedConv(partial(depth_mask, True), 2),
+            FactorHalf(),
+        ]
+        network = Network(layers)
+        inputs = tf.random_uniform([3, 8, 8, 4])
+        outputs, latents, log_det = network.forward(inputs)
+        loss = (tf.reduce_sum(tf.stack([(random() + 1) * tf.reduce_sum(x) for x in latents])) +
+                (random() + 1) * tf.reduce_sum(log_det))
+
+        manual_grads = network.gradients(outputs, latents, log_det, loss)
+        manual_grads = {var: grad for grad, var in manual_grads}
+        manual_grads = [manual_grads[v] for v in tf.trainable_variables()]
+
+        true_grads = tf.gradients(loss, tf.trainable_variables())
+
+        diffs = [tf.reduce_max(x - y) for x, y in zip(manual_grads, true_grads)]
+        max_diff = tf.reduce_max(tf.stack(diffs))
+
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            _randomized_init(sess)
+            assert sess.run(max_diff) < 1e-4
 
 
 def test_padded_logit_inverse():
