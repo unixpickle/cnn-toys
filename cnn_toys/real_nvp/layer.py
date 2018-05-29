@@ -20,6 +20,47 @@ class NVPLayer(ABC):
         """
         return 0
 
+    def test_feed_dict(self):
+        """
+        Get a feed_dict to pass to TensorFlow when testing
+        the model. Typically, this will tell BatchNorm to
+        use pre-computed statistics.
+        """
+        return {}
+
+    @abstractmethod
+    def _forward(self, inputs):
+        """
+        Apply the layer to a batch of inputs.
+
+        Args:
+          inputs: an input batch for the layer.
+
+        Returns:
+          A tuple (outputs, latents, log_det):
+            outputs: the values to be passed to the next
+              layer of the network. May be None for the
+              last layer of the network.
+            latents: A tuple of factored out Tensors.
+              This may be an empty tuple.
+            log_det: a batch of log of the determinants.
+        """
+        pass
+
+    @abstractmethod
+    def _inverse(self, outputs, latents):
+        """
+        Apply the inverse of the layer.
+
+        Args:
+          outputs: the outputs from the layer.
+          latents: the latent outputs from the layer.
+
+        Returns:
+          The recovered input batch for the layer.
+        """
+        pass
+
     def forward(self, inputs, name='layer', reuse=False):
         """
         Apply the layer to a batch of inputs.
@@ -41,25 +82,6 @@ class NVPLayer(ABC):
         with tf.variable_scope(name, reuse=reuse):
             return self._forward(inputs)
 
-    @abstractmethod
-    def _forward(self, inputs):
-        """
-        Apply the layer to a batch of inputs.
-
-        Args:
-          inputs: an input batch for the layer.
-
-        Returns:
-          A tuple (outputs, latents, log_det):
-            outputs: the values to be passed to the next
-              layer of the network. May be None for the
-              last layer of the network.
-            latents: A tuple of factored out Tensors.
-              This may be an empty tuple.
-            log_det: a batch of log of the determinants.
-        """
-        pass
-
     def inverse(self, outputs, latents, name='layer', reuse=False):
         """
         Apply the inverse of the layer.
@@ -75,20 +97,6 @@ class NVPLayer(ABC):
         """
         with tf.variable_scope(name, reuse=reuse):
             return self._inverse(outputs, latents)
-
-    @abstractmethod
-    def _inverse(self, outputs, latents):
-        """
-        Apply the inverse of the layer.
-
-        Args:
-          outputs: the outputs from the layer.
-          latents: the latent outputs from the layer.
-
-        Returns:
-          The recovered input batch for the layer.
-        """
-        pass
 
     def backward(self, outputs, outputs_grad, latents, latents_grad, log_det_grad,
                  var_list=None, name='layer', reuse=False):
@@ -179,14 +187,6 @@ class NVPLayer(ABC):
         return self.backward(outputs, outputs_grad, latents, latents_grad, log_det_grad,
                              var_list=var_list, name=name, reuse=reuse)[2]
 
-    def test_feed_dict(self):
-        """
-        Get a feed_dict to pass to TensorFlow when testing
-        the model. Typically, this will tell BatchNorm to
-        use pre-computed statistics.
-        """
-        return {}
-
 
 class Network(NVPLayer):
     """
@@ -199,6 +199,11 @@ class Network(NVPLayer):
     @property
     def num_latents(self):
         return 1 + sum(l.num_latents for l in self.layers)
+
+    def test_feed_dict(self):
+        res = {}
+        for layer in self.layers:
+            res.update(layer.test_feed_dict())
 
     def _forward(self, inputs):
         latents = []
@@ -257,11 +262,6 @@ class Network(NVPLayer):
                     else:
                         total_grads[var] = grad
             return outputs, outputs_grad, [(grad, var) for var, grad in total_grads.items()]
-
-    def test_feed_dict(self):
-        res = {}
-        for layer in self.layers:
-            res.update(layer.test_feed_dict())
 
 
 class PaddedLogit(NVPLayer):
