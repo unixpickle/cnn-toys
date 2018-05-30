@@ -244,6 +244,7 @@ class Network(NVPLayer):
             latents = latents[:-1]
             latents_grad = latents_grad[:-1]
             total_grads = {}
+            prev_grads = []
             for i, layer in list(enumerate(self.layers))[::-1]:
                 if layer.num_latents > 0:
                     sub_latents = latents[-layer.num_latents:]
@@ -253,18 +254,20 @@ class Network(NVPLayer):
                 else:
                     sub_latents = ()
                     sub_latents_grad = ()
-                outputs, outputs_grad, vars_grad = layer.backward(outputs,
-                                                                  outputs_grad,
-                                                                  sub_latents,
-                                                                  sub_latents_grad,
-                                                                  log_det_grad,
-                                                                  var_list=var_list,
-                                                                  name='layer_%d' % i)
+                with tf.control_dependencies(prev_grads):
+                    outputs, outputs_grad, vars_grad = layer.backward(outputs,
+                                                                      outputs_grad,
+                                                                      sub_latents,
+                                                                      sub_latents_grad,
+                                                                      log_det_grad,
+                                                                      var_list=var_list,
+                                                                      name='layer_%d' % i)
                 for grad, var in vars_grad:
                     if var in total_grads:
                         total_grads[var] += grad
                     else:
                         total_grads[var] = grad
+                prev_grads = [g for g, _ in vars_grad]
             return outputs, outputs_grad, [(grad, var) for var, grad in total_grads.items()]
 
 
