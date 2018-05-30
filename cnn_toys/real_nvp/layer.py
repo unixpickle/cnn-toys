@@ -143,14 +143,14 @@ class NVPLayer(ABC):
             objective += tf.reduce_sum(new_outputs * tf.stop_gradient(outputs_grad))
         for latent, latent_grad in zip(new_latents, latents_grad):
             objective += tf.reduce_sum(latent * tf.stop_gradient(latent_grad))
-        input_grad = tf.gradients(objective, inputs)[0]
+        variables = var_list if var_list is not None else tf.trainable_variables()
+        grads = tf.gradients(objective, [inputs] + variables)
+        input_grad = grads[0]
         if input_grad is None:
             input_grad = tf.Print(tf.zeros_like(input_grad), [],
                                   message='WARNING: gradient does not flow to inputs',
                                   first_n=1)
-        variables = var_list if var_list is not None else tf.trainable_variables()
-        var_grads = [x for x in zip(tf.gradients(objective, variables), variables)
-                     if x[0] is not None]
+        var_grads = [pair for pair in zip(grads[1:], variables) if pair[0] is not None]
         return inputs, input_grad, var_grads
 
     def gradients(self, outputs, latents, log_det, loss, var_list=None, name='layer', reuse=True):
