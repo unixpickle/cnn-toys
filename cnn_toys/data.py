@@ -2,6 +2,7 @@
 Tools for dealing with datasets of images.
 """
 
+import glob
 from hashlib import md5
 import os
 
@@ -15,12 +16,7 @@ def dir_train_val(image_dir, size, bigger_size=None):
 
     Returns (train, validation).
     """
-    if not os.path.isdir(image_dir):
-        raise RuntimeError('image directory not found: ' + image_dir)
-    paths = []
-    for name in os.listdir(image_dir):
-        if not name.startswith('.'):
-            paths.append(os.path.join(image_dir, name))
+    paths = _find_paths(image_dir)
     train_paths = [p for p in paths if not _use_for_val(p)]
     val_paths = [p for p in paths if _use_for_val(p)]
     if not train_paths or not val_paths:
@@ -31,11 +27,7 @@ def dir_train_val(image_dir, size, bigger_size=None):
 
 def dir_dataset(image_dir, size, bigger_size=None):
     """Create a Dataset of images from a directory."""
-    paths = []
-    for name in os.listdir(image_dir):
-        if not name.startswith('.'):
-            paths.append(os.path.join(image_dir, name))
-    return images_dataset(paths, size, bigger_size=bigger_size)
+    return images_dataset(_find_paths(image_dir), size, bigger_size=bigger_size)
 
 
 def images_dataset(paths, size, bigger_size=None):
@@ -64,3 +56,16 @@ def images_dataset(paths, size, bigger_size=None):
 
 def _use_for_val(path):
     return md5(bytes(path, 'utf-8')).digest()[0] < 0x80
+
+
+def _find_paths(image_dir):
+    if not os.path.isdir(image_dir):
+        if '*' in image_dir:
+            return glob.glob(image_dir)
+        else:
+            raise RuntimeError('image directory not found: ' + image_dir)
+    paths = []
+    for name in os.listdir(image_dir):
+        if not name.startswith('.'):
+            paths.append(os.path.join(image_dir, name))
+    return paths
